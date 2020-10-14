@@ -1,0 +1,5 @@
+# https://esphome.io/components/status_led.html
+status_led:
+  pin:
+    number: D4
+    inverted: true

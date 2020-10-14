@@ -1,0 +1,34 @@
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: esp8285
+  build_path: _builds/$NAME/
+
+<<: !include ../wifi.yaml
+<<: !include ../mqtt.yaml
+
+text_sensor:
+  - <<: !include ../wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include ../wifi_rssi_sensor.yaml
+  - <<: !include ../uptime_sensor.yaml
+
+status_led:
+  pin:
+    number: GPIO13
+    inverted: true
+
+binary_sensor:
+  - name: $PREFIX Button
+    platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+
+switch:
+  - name: $PREFIX Switch
+    platform: gpio
+    pin: GPIO12
+

@@ -1,0 +1,165 @@
+substitutions:
+  NAME: solar_hws_ctl
+  PREFIX: HWS Ctl
+  WIFI_AP_SSID: ESP-$NAME
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+  on_boot:
+    - delay: 10s
+    - climate.control:
+        id: tank_target
+        mode: HEAT
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+i2c:
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+# https://esphome.io/components/sensor/index.html
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - id: adc_sensor
+    platform: adc
+    pin: A0
+    update_interval: never
+    filters:
+      - multiply: 1024
+
+  - id: solar_temp_sensor
+    name: $PREFIX Solar
+    platform: template
+    unit_of_measurement: °C
+    accuracy_decimals: 1
+    ## HWS:
+    lambda: return (id(adc_sensor).state - 288.6) / 6.38;
+    ## BBQ:
+    # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
+    update_interval: never
+    filters:
+      - sliding_window_moving_average:
+          window_size: 12
+          send_every: 4
+
+  - id: tank_temp_sensor
+    name: $PREFIX Tank
+    platform: template
+    unit_of_measurement: °C
+    accuracy_decimals: 1
+    ## HWS:
+    lambda: return (id(adc_sensor).state - 285.54) / 5.269;
+    ## BBQ:
+    # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
+    update_interval: never
+    filters:
+      - sliding_window_moving_average:
+          window_size: 12
+          send_every: 4
+
+switch:
+  - id: pump_switch
+    name: $PREFIX Pump
+    platform: gpio
+    pin: D8
+    retain: false
+    restore_mode: ALWAYS_OFF
+
+  - id: heating_mode
+    name: $PREFIX Heating Mode
+    platform: gpio
+    pin: D7
+    retain: false
+    restore_mode: ALWAYS_OFF
+    on_turn_off:
+      then:
+        - switch.turn_off: pump_switch
+
+  - id: solar_ntc_switch
+    platform: gpio
+    pin: D5
+
+  - id: tank_ntc_switch
+    platform: gpio
+    pin: D6
+
+climate:
+  - id: tank_target
+    name: Target
+    platform: thermostat
+    sensor: tank_temp_sensor
+    default_target_temperature_low: 65 °C
+    heat_action:
+      - switch.turn_on: heating_mode
+    idle_action:
+      - switch.turn_off: heating_mode
+    visual:
+      min_temperature: 50 °C
+      max_temperature: 80 °C
+      temperature_step: 1 °C
+
+binary_sensor:
+  - id: pump_turn_on
+    name: $PREFIX Auto On
+    platform: template
+    lambda: |-
+        return (
+          id(heating_mode).state &&
+          id(solar_temp_sensor).state < 100 &&
+          id(tank_temp_sensor).state < 80 &&
+          id(solar_temp_sensor).state > id(tank_temp_sensor).state + 12
+        );
+    on_press:
+      then:
+        - switch.turn_on: pump_switch
+
+  - id: pump_turn_off
+    name: $PREFIX Auto Off
+    platform: template
+    lambda: |-
+        return id(solar_temp_sensor).state < id(tank_temp_sensor).state + 6;
+    on_press:
+      then:
+        - switch.turn_off: pump_switch
+
+interval:
+  - interval: 5s
+    then:
+      - switch.turn_on: solar_ntc_switch
+      - component.update: adc_sensor
+      - switch.turn_off: solar_ntc_switch
+      - component.update: solar_temp_sensor
+      - switch.turn_on: tank_ntc_switch
+      - component.update: adc_sensor
+      - switch.turn_off: tank_ntc_switch
+      - component.update: tank_temp_sensor
+
+font:
+  # https://www.dafont.com/andrew-tyler.d2526
+  - id: mono
+    file: 'pixelmix.ttf'
+    size: 8
+
+display:
+  - platform: ssd1306_i2c
+    model: SSD1306 64x48
+    address: 0x3C
+    lambda: |-
+      it.printf(0, 0, id(mono), TextAlign::TOP_LEFT, "WIFI: %.0f %s", id(wifi_rssi).state, id(mqtt_client).is_connected() ? "OK" : "--");
+      it.printf(0, 8, id(mono), TextAlign::TOP_LEFT, "SOLAR: %.0f", id(solar_temp_sensor).state);
+      it.printf(0, 16, id(mono), TextAlign::TOP_LEFT, "TANK: %.0f", id(tank_temp_sensor).state);
+      it.printf(0, 24, id(mono), TextAlign::TOP_LEFT, "TARGET: %.0f", id(tank_target).target_temperature_low);
+      it.printf(0, 32, id(mono), TextAlign::TOP_LEFT, "HEATING: %s", id(heating_mode).state ? "ON" : "OFF");
+      it.printf(0, 40, id(mono), TextAlign::TOP_LEFT, "PUMP: %s", id(tank_target).mode == CLIMATE_MODE_HEAT ? (id(pump_switch).state ? "ON" : "OFF") : "--");
+

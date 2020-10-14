@@ -1,0 +1,49 @@
+substitutions:
+  NAME: patio_floodlight
+  PREFIX: Patio Floodlight
+  SHORT_PREFIX: Patio
+  WIFI_AP_SSID: ESP-PFL
+  REBOOT_TIMEOUT: 60min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+## https://esphome.io/components/binary_sensor/index.html
+# binary_sensor:
+#   - platform: gpio
+#     pin:
+#       number: D2
+#       mode: INPUT_PULLUP
+#       inverted: false
+#     name: $SHORT_PREFIX Motion
+#     device_class: motion
+#     retain: false
+
+output:
+  - platform: esp8266_pwm
+    id: d1_output
+    pin: D1
+    frequency: 100 Hz
+
+light:
+  # https://esphome.io/components/light/monochromatic.html
+  - platform: monochromatic
+    name: $SHORT_PREFIX Light
+    output: d1_output
+    restore_mode: ALWAYS_OFF

@@ -1,0 +1,9 @@
+# https://esphome.io/components/mqtt.html
+mqtt:
+  id: mqtt_client
+  broker: !secret MQTT_BROKER
+  username: !secret MQTT_USERNAME
+  password: !secret MQTT_PASSWORD
+  discovery_prefix: $MQTT_PREFIX/homeassistant
+  topic_prefix: $MQTT_PREFIX/$NAME
+  reboot_timeout: $REBOOT_TIMEOUT

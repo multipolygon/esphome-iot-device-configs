@@ -1,0 +1,10 @@
+substitutions:
+  NAME: studio_env_sensor
+  PREFIX: Studio
+  WIFI_AP_SSID: ESP-SES
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+  SLEEP_DURATION: 15min
+
+<<: !include partial/environment_sensor.yaml

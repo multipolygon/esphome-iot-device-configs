@@ -1,0 +1,162 @@
+#   A0 = 0 # Analog input, max 3.3V
+#x  D1 = SCL = 5
+#x  D2 = SDA = 4
+#   D3 = 0 # 10k Pull-up
+#x  D4 = LED = 2 # 10k Pull-up
+#x  D5 = SCK = 14
+#x  D6 = MISO = 12
+#x  D7 = MOSI = 13
+#x  D8 = SS = 15 # 10k Pull-down
+
+substitutions:
+  NAME: garden_trellis
+  PREFIX: Garden Trellis
+  WIFI_AP_SSID: ESP-GAR-TREL
+  REBOOT_TIMEOUT: 5.1h
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+# https://esphome.io/components/i2c.html
+i2c:
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+# https://esphome.io/components/sensor/index.html
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  # https://esphome.io/components/sensor/sht3xd.html
+  - platform: sht3xd
+    address: 0x45
+    update_interval: 1min
+
+    temperature:
+      id: temp_sensor
+      name: $PREFIX Temperature
+      retain: false
+      filters:
+        - sliding_window_moving_average:
+            window_size: 10
+            send_every: 10
+
+    humidity:
+      id: humid_sensor
+      name: $PREFIX Humidity
+      retain: false
+      filters:
+        - sliding_window_moving_average:
+            window_size: 10
+            send_every: 10
+
+  # https://esphome.io/components/sensor/bh1750.html
+  - platform: bh1750
+    id: lux_sensor
+    name: $PREFIX Illuminance
+    address: 0x23
+    measurement_time: 31
+    update_interval: 1min
+    retain: false
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+# https://esphome.io/components/switch/index.html
+switch:
+  - id: enable_switch
+    platform: gpio
+    pin: D8
+    name: $PREFIX Enable
+    retain: true
+    restore_mode: ALWAYS_ON
+
+  - id: pump_switch
+    platform: gpio
+    pin: D7
+    name: $PREFIX Pump
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - script.execute: pump_timer
+
+  - platform: restart
+    name: $PREFIX Restart
+
+output:
+  - id: activated_led
+    platform: gpio
+    pin: D6
+
+# https://esphome.io/components/binary_sensor/index.html
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: D5
+      mode: INPUT_PULLUP
+    id: water_tank_binary_sensor
+    name: $PREFIX Water Tank
+    device_class: moisture
+    retain: false
+
+  # https://esphome.io/components/binary_sensor/template.html
+  - platform: template
+    id: active_binary_sensor
+    name: $PREFIX Active
+    retain: false
+    lambda: |-
+      if (
+        id(enable_switch).state
+        && id(water_tank_binary_sensor).state
+        && id(lux_sensor).state > 5000
+        && id(temp_sensor).state > 10
+        && id(temp_sensor).state < 40
+        && id(humid_sensor).state < 70
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+
+# https://esphome.io/guides/automations.html#script
+script:
+  - id: pump_timer
+    then:
+      - switch.turn_on: pump_switch
+      - if:
+          condition:
+            lambda: return id(temp_sensor).state > 30;
+          then:
+            - logger.log:
+                format: "60s timer..."
+                level: INFO
+            - delay: 60s
+          else:
+            - logger.log:
+                format: "45s timer..."
+                level: INFO
+            - delay: 45s
+      - switch.turn_off: pump_switch
+
+# https://esphome.io/guides/automations.html#interval
+interval:
+  - interval: 90min
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_on: active_binary_sensor
+          then:
+            - output.turn_on: activated_led
+            - script.execute: pump_timer
+          else:
+            - output.turn_off: activated_led

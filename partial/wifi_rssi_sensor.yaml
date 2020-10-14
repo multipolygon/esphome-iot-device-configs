@@ -1,0 +1,5 @@
+# https://esphome.io/components/sensor/wifi_signal.html
+platform: wifi_signal
+name: $PREFIX WiFi
+update_interval: 5min
+id: wifi_rssi

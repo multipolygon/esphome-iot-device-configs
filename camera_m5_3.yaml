@@ -1,0 +1,17 @@
+substitutions:
+  ID: "3"
+  NAME: camera_m5_$ID
+  PREFIX: Camera M5 $ID
+  WIFI_AP_SSID: ESP-M5-$ID
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+
+  # 800x600 - SVGA
+  # 1024x768 - XGA
+  # 1280x1024 - SXGA
+  CAMERA_RESOLUTION: SXGA
+  CAMERA_MAX_FRAMERATE: 1 fps
+  CAMERA_VERTICAL_FLIP: "yes"
+  CAMERA_HORIZONTAL_MIRROR: "no"
+
+<<: !include partial/camera/m5_psram.yaml

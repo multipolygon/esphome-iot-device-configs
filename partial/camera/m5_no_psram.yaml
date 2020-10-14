@@ -1,0 +1,29 @@
+## TODO
+
+## M5 Cameras without SRAM only support up to SVGA 800×600
+## https://docs.m5stack.com/#/en/unit/esp32cam
+## https://www.aliexpress.com/item/M5Stack-Official-ESP32-Camera-Development-Board-OV2640-Camera-Type-C-Grove-Port-3D-Wifi-Antenna-Mini/32881414545.html](https://www.aliexpress.com/item/M5Stack-Official-ESP32-Camera-Development-Board-OV2640-Camera-Type-C-Grove-Port-3D-Wifi-Antenna-Mini/32881414545.html
+# https://esphome.io/components/esp32_camera.html
+esp32_camera:
+  name: $PREFIX
+
+  # Pins:
+  external_clock:
+    pin: GPIO27
+    frequency: 20MHz
+  i2c_pins:
+    sda: GPIO25
+    scl: GPIO23
+  data_pins:
+    - GPIO17
+    - GPIO35
+    - GPIO34
+    - GPIO5
+    - GPIO39
+    - GPIO18
+    - GPIO36
+    - GPIO19
+  vsync_pin: GPIO22
+  href_pin: GPIO26
+  pixel_clock_pin: GPIO21
+  reset_pin: GPIO15

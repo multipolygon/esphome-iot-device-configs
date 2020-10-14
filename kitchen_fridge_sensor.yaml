@@ -1,0 +1,11 @@
+substitutions:
+  NAME: kitchen_fridge_sensor
+  PREFIX: Kitchen Fridge Sensor
+  SHORT_PREFIX: Kitchen Fridge
+  WIFI_AP_SSID: ESP-KFS
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+  SLEEP_DURATION: 60min
+
+<<: !include partial/environment_sensor.yaml

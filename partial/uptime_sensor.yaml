@@ -1,0 +1,5 @@
+# https://esphome.io/components/sensor/uptime.html
+platform: uptime
+id: uptime_sensor
+name: $PREFIX Uptime
+update_interval: 5min

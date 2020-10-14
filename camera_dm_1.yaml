@@ -1,0 +1,17 @@
+substitutions:
+  ID: "1"
+  NAME: camera_dm_$ID
+  PREFIX: Camera DM $ID
+  WIFI_AP_SSID: ESP-DM-$ID
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+
+  # 800x600 - SVGA
+  # 1024x768 - XGA
+  # 1280x1024 - SXGA
+  CAMERA_RESOLUTION: XGA
+  CAMERA_MAX_FRAMERATE: 3 fps
+  CAMERA_VERTICAL_FLIP: "yes"
+  CAMERA_HORIZONTAL_MIRROR: "yes"
+
+<<: !include partial/camera/diymore.yaml

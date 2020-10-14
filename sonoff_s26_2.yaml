@@ -1,0 +1,10 @@
+substitutions:
+  ID: "2"
+  NAME: sonoff_s26_$ID
+  PREFIX: Sonoff S26 $ID
+  WIFI_AP_SSID: ESP-S26-$ID
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+<<: !include partial/sonoff/s26.yaml

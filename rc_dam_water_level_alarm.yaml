@@ -1,0 +1,72 @@
+substitutions:
+  NAME: rc_dam_water_level_alarm
+  PREFIX: Dam Water Level
+  WIFI_AP_SSID: ESP-$NAME
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini_pro
+  build_path: _builds/$NAME/
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+# https://esphome.io/components/switch/index.html
+switch:
+  - platform: shutdown
+    name: $PREFIX Shutdown
+
+output:
+  - platform: gpio
+    id: led_output
+    pin: GPIO0 # LED
+
+  - platform: gpio
+    id: audible_output
+    pin:
+      number: GPIO5
+      mode: OUTPUT_OPEN_DRAIN
+      inverted: true
+
+script:
+  - id: audible_alert
+    then:
+      - output.turn_on: audible_output
+      - delay: 1min
+      - output.turn_off: audible_output
+
+# https://esphome.io/guides/automations.html#interval
+interval:
+  - interval: 2s
+    then:
+      - output.turn_on: led_output
+      - delay: 1s
+      - output.turn_off: led_output
+
+  - interval: 2min
+    then:
+      - if:
+          condition:
+            lambda: return id(uptime_sensor).state < 600;
+          then:
+            - script.execute: audible_alert
+
+  - interval: 10min
+    then:
+      - script.execute: audible_alert
+
+deep_sleep:
+  run_duration: 60min
+  sleep_duration: 60min

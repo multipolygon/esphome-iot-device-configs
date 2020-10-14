@@ -1,0 +1,65 @@
+esphome:
+  name: $NAME
+  platform: ESP32
+  board: nodemcu-32s
+  build_path: _builds/$NAME/
+
+status_led:
+  pin:
+    number: GPIO14
+    inverted: true
+
+<<: !include ../wifi.yaml
+
+api:
+  reboot_timeout: $REBOOT_TIMEOUT
+
+text_sensor:
+  - <<: !include ../wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include ../wifi_rssi_sensor.yaml
+  - <<: !include ../uptime_sensor.yaml
+
+## DIY More / AI Thinker ESP32 Camera
+## https://www.aliexpress.com/item/OV2640-ESP32-CAM-Wireless-WiFi-Bluetooth-Module-Camera-Development-Board-ESP32-OV7670-DC-5V-Dual-core/32963661794.html
+## Flashing:
+## https://randomnerdtutorials.com/program-upload-code-esp32-cam/
+## 1. Wire TTY USB adaptor to 5v, GND, V0R, V0T
+## 1. Bridge IO0 to GND
+## 1. `./erase.sh`
+## 1. reset
+## 1. `pipenv run esphome camera-esp32-cam-dm.yaml run`
+## 1. press reset button if the script freezes
+## 1. wait for flash transfer until it says `waiting for download`
+## 1. disconnect IO0 from GND
+## 1. press reset button
+## 1. done
+
+# https://esphome.io/components/esp32_camera.html
+esp32_camera:
+  name: $PREFIX
+
+  # Pins:
+  external_clock:
+    pin: GPIO0
+    frequency: 20MHz
+  i2c_pins:
+    sda: GPIO26
+    scl: GPIO27
+  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+  vsync_pin: GPIO25
+  href_pin: GPIO23
+  pixel_clock_pin: GPIO22
+  power_down_pin: GPIO32
+
+  # Image:
+  idle_framerate: 0.01 fps
+  max_framerate: $CAMERA_MAX_FRAMERATE
+  resolution: $CAMERA_RESOLUTION
+  jpeg_quality: 10
+  contrast: 0
+  brightness: 0
+  saturation: 0
+  vertical_flip: $CAMERA_VERTICAL_FLIP
+  horizontal_mirror: $CAMERA_HORIZONTAL_MIRROR
