@@ -45,9 +45,7 @@ sensor:
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
-    ## HWS:
     lambda: return (id(adc_sensor).state - 288.6) / 6.38;
-    ## BBQ:
     # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
     update_interval: never
     retain: false
@@ -57,15 +55,12 @@ sensor:
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
-    ## HWS:
     lambda: return (id(adc_sensor).state - 285.54) / 5.269;
-    ## BBQ:
     # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
     update_interval: never
     retain: false
 
   - id: tank_solar_diff_temp_sensor
-    name: $PREFIX Tank-Solar Difference
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
@@ -82,7 +77,7 @@ binary_sensor:
     retain: false
     on_release:
       then:
-        - switch.turn_off: pump_switch
+        switch.turn_off: pump_switch
 
   # Below vaporisation point:
   - id: solar_below_max_sensor
@@ -92,7 +87,7 @@ binary_sensor:
     retain: false
     on_release:
       then:
-        - switch.turn_off: pump_switch
+        switch.turn_off: pump_switch
 
 switch:
   - id: pump_switch
@@ -104,13 +99,13 @@ switch:
     # Safety override:
     on_turn_on:
         then:
-          - if:
-              condition:
-                or:
-                  - binary_sensor.is_off: tank_below_max_sensor
-                  - binary_sensor.is_off: solar_below_max_sensor
-              then:
-                - switch.turn_off: pump_switch
+          if:
+            condition:
+              or:
+                - binary_sensor.is_off: tank_below_max_sensor
+                - binary_sensor.is_off: solar_below_max_sensor
+            then:
+              switch.turn_off: pump_switch
 
   - id: heating_mode_switch
     name: $PREFIX Heating Mode
@@ -120,7 +115,7 @@ switch:
     restore_mode: ALWAYS_OFF
     on_turn_off:
       then:
-        - switch.turn_off: pump_switch
+        switch.turn_off: pump_switch
 
   - id: solar_ntc_switch
     platform: gpio
@@ -139,9 +134,9 @@ climate:
     sensor: tank_temp_sensor
     default_target_temperature_low: 65 °C
     heat_action:
-      - switch.turn_on: heating_mode_switch
+      switch.turn_on: heating_mode_switch
     idle_action:
-      - switch.turn_off: heating_mode_switch
+      switch.turn_off: heating_mode_switch
     visual:
       min_temperature: 0 °C
       max_temperature: $TANK_MAX_TEMP °C
