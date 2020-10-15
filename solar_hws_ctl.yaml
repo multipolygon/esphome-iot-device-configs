@@ -16,8 +16,9 @@ esphome:
   on_boot:
     - delay: 10s
     - climate.control:
-        id: tank_target
+        id: tank_thermostat
         mode: HEAT
+    - component.update: tank_thermostat_target
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -61,8 +62,8 @@ sensor:
     update_interval: 1min
     filters:
       - median:
-          window_size: 10
-          send_every: 10
+          window_size: 5
+          send_every: 5
 
   - name: $PREFIX Tank
     platform: template
@@ -73,8 +74,17 @@ sensor:
     update_interval: 1min
     filters:
       - median:
-          window_size: 10
-          send_every: 10
+          window_size: 5
+          send_every: 5
+
+  - id: tank_thermostat_target
+    name: $PREFIX Target
+    platform: template
+    unit_of_measurement: °C
+    accuracy_decimals: 0
+    lambda: return id(tank_thermostat).target_temperature;
+    retain: false
+    update_interval: 5min
 
 switch:
   - id: pump_switch
@@ -95,8 +105,8 @@ switch:
     pin: D6
 
 climate:
-  - id: tank_target
-    name: $PREFIX Tank Target
+  - id: tank_thermostat
+    name: $PREFIX Thermostat
     platform: thermostat
     sensor: tank_temp_sensor
     default_target_temperature_low: 65 °C
@@ -124,7 +134,7 @@ interval:
           condition:
             lambda: |-
                 return (
-                  id(tank_temp_sensor).state <= id(tank_target).target_temperature &&
+                  id(tank_temp_sensor).state <= id(tank_thermostat).target_temperature &&
                   id(tank_temp_sensor).state <= $TANK_MAX_TEMP &&
                   id(solar_temp_sensor).state <= $SOLAR_MAX_TEMP
                 );
@@ -157,6 +167,6 @@ display:
       it.printf(0, 0, id(mono), TextAlign::TOP_LEFT, "WIFI: %.0f %s", id(wifi_rssi).state, id(mqtt_client).is_connected() ? "OK" : "--");
       it.printf(0, 10, id(mono), TextAlign::TOP_LEFT, "SOLAR: %.0f", id(solar_temp_sensor).state);
       it.printf(0, 20, id(mono), TextAlign::TOP_LEFT, "TANK: %.0f", id(tank_temp_sensor).state);
-      it.printf(0, 30, id(mono), TextAlign::TOP_LEFT, "TARGET: %.0f", id(tank_target).target_temperature_low);
+      it.printf(0, 30, id(mono), TextAlign::TOP_LEFT, "TARGET: %.0f", id(tank_thermostat).target_temperature_low);
       it.printf(0, 40, id(mono), TextAlign::TOP_LEFT, "PUMP: %s", id(pump_switch).state ? "ON" : "OFF");
 
