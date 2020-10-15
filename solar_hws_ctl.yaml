@@ -194,5 +194,5 @@ display:
       it.printf(0, 16, id(mono), TextAlign::TOP_LEFT, "TANK: %.0f", id(tank_temp_sensor).state);
       it.printf(0, 24, id(mono), TextAlign::TOP_LEFT, "TARGET: %.0f", id(tank_target).target_temperature_low);
       it.printf(0, 32, id(mono), TextAlign::TOP_LEFT, "HEATING: %s", id(heating_mode_switch).state ? "ON" : "OFF");
-      it.printf(0, 40, id(mono), TextAlign::TOP_LEFT, "PUMP: %s", id(tank_target).mode == CLIMATE_MODE_HEAT ? (id(pump_switch).state ? "ON" : "OFF") : "--");
+      it.printf(0, 40, id(mono), TextAlign::TOP_LEFT, "PUMP: %s", id(pump_switch).state ? "ON" : "OFF");
 
