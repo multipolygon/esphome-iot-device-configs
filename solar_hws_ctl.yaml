@@ -5,6 +5,8 @@ substitutions:
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
+  TANK_MAX_TEMP: "80"
+  SOLAR_MAX_TEMP: "100"
 
 esphome:
   name: $NAME
@@ -42,31 +44,55 @@ sensor:
     name: $PREFIX Solar
     platform: template
     unit_of_measurement: °C
-    accuracy_decimals: 1
+    accuracy_decimals: 0
     ## HWS:
     lambda: return (id(adc_sensor).state - 288.6) / 6.38;
     ## BBQ:
     # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
     update_interval: never
-    filters:
-      - sliding_window_moving_average:
-          window_size: 12
-          send_every: 4
+    retain: false
 
   - id: tank_temp_sensor
     name: $PREFIX Tank
     platform: template
     unit_of_measurement: °C
-    accuracy_decimals: 1
+    accuracy_decimals: 0
     ## HWS:
     lambda: return (id(adc_sensor).state - 285.54) / 5.269;
     ## BBQ:
     # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
     update_interval: never
-    filters:
-      - sliding_window_moving_average:
-          window_size: 12
-          send_every: 4
+    retain: false
+
+  - id: tank_solar_diff_temp_sensor
+    name: $PREFIX Tank-Solar Difference
+    platform: template
+    unit_of_measurement: °C
+    accuracy_decimals: 0
+    lambda: return id(solar_temp_sensor).state - id(tank_temp_sensor).state;
+    update_interval: never
+    retain: false
+
+binary_sensor:
+  # Absolute maximum tank temperature, regardless of thermostat:
+  - id: tank_below_max_sensor
+    name: $PREFIX Tank Below Max
+    platform: template
+    lambda: return id(tank_temp_sensor).state < $TANK_MAX_TEMP;
+    retain: false
+    on_release:
+      then:
+        - switch.turn_off: pump_switch
+
+  # Below vaporisation point:
+  - id: solar_below_max_sensor
+    name: $PREFIX Solar Below Max
+    platform: template
+    lambda: return id(solar_temp_sensor).state < $SOLAR_MAX_TEMP;
+    retain: false
+    on_release:
+      then:
+        - switch.turn_off: pump_switch
 
 switch:
   - id: pump_switch
@@ -75,8 +101,18 @@ switch:
     pin: D8
     retain: false
     restore_mode: ALWAYS_OFF
+    # Safety override:
+    on_turn_on:
+        then:
+          - if:
+              condition:
+                or:
+                  - binary_sensor.is_off: tank_below_max_sensor
+                  - binary_sensor.is_off: solar_below_max_sensor
+              then:
+                - switch.turn_off: pump_switch
 
-  - id: heating_mode
+  - id: heating_mode_switch
     name: $PREFIX Heating Mode
     platform: gpio
     pin: D7
@@ -88,53 +124,31 @@ switch:
 
   - id: solar_ntc_switch
     platform: gpio
+    restore_mode: ALWAYS_OFF
     pin: D5
 
   - id: tank_ntc_switch
     platform: gpio
+    restore_mode: ALWAYS_OFF
     pin: D6
 
 climate:
   - id: tank_target
-    name: Target
+    name: $PREFIX Tank Target
     platform: thermostat
     sensor: tank_temp_sensor
     default_target_temperature_low: 65 °C
     heat_action:
-      - switch.turn_on: heating_mode
+      - switch.turn_on: heating_mode_switch
     idle_action:
-      - switch.turn_off: heating_mode
+      - switch.turn_off: heating_mode_switch
     visual:
-      min_temperature: 50 °C
-      max_temperature: 80 °C
+      min_temperature: 0 °C
+      max_temperature: $TANK_MAX_TEMP °C
       temperature_step: 1 °C
 
-binary_sensor:
-  - id: pump_turn_on
-    name: $PREFIX Auto On
-    platform: template
-    lambda: |-
-        return (
-          id(heating_mode).state &&
-          id(solar_temp_sensor).state < 100 &&
-          id(tank_temp_sensor).state < 80 &&
-          id(solar_temp_sensor).state > id(tank_temp_sensor).state + 12
-        );
-    on_press:
-      then:
-        - switch.turn_on: pump_switch
-
-  - id: pump_turn_off
-    name: $PREFIX Auto Off
-    platform: template
-    lambda: |-
-        return id(solar_temp_sensor).state < id(tank_temp_sensor).state + 6;
-    on_press:
-      then:
-        - switch.turn_off: pump_switch
-
 interval:
-  - interval: 5s
+  - interval: 10s
     then:
       - switch.turn_on: solar_ntc_switch
       - component.update: adc_sensor
@@ -144,6 +158,25 @@ interval:
       - component.update: adc_sensor
       - switch.turn_off: tank_ntc_switch
       - component.update: tank_temp_sensor
+      - component.update: tank_solar_diff_temp_sensor
+      - if:
+          condition:
+            and:
+              - switch.is_on: heating_mode_switch
+              - binary_sensor.is_on: tank_below_max_sensor
+              - binary_sensor.is_on: solar_below_max_sensor
+              - sensor.in_range:
+                  id: tank_solar_diff_temp_sensor
+                  above: 12.0
+          then:
+            - switch.turn_on: pump_switch
+      - if:
+          condition:
+            sensor.in_range:
+              id: tank_solar_diff_temp_sensor
+              below: 6.0
+          then:
+            - switch.turn_off: pump_switch
 
 font:
   # https://www.dafont.com/andrew-tyler.d2526
@@ -160,6 +193,6 @@ display:
       it.printf(0, 8, id(mono), TextAlign::TOP_LEFT, "SOLAR: %.0f", id(solar_temp_sensor).state);
       it.printf(0, 16, id(mono), TextAlign::TOP_LEFT, "TANK: %.0f", id(tank_temp_sensor).state);
       it.printf(0, 24, id(mono), TextAlign::TOP_LEFT, "TARGET: %.0f", id(tank_target).target_temperature_low);
-      it.printf(0, 32, id(mono), TextAlign::TOP_LEFT, "HEATING: %s", id(heating_mode).state ? "ON" : "OFF");
+      it.printf(0, 32, id(mono), TextAlign::TOP_LEFT, "HEATING: %s", id(heating_mode_switch).state ? "ON" : "OFF");
       it.printf(0, 40, id(mono), TextAlign::TOP_LEFT, "PUMP: %s", id(tank_target).mode == CLIMATE_MODE_HEAT ? (id(pump_switch).state ? "ON" : "OFF") : "--");
 
