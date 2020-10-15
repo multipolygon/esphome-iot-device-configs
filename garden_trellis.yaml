@@ -150,7 +150,7 @@ script:
 
 # https://esphome.io/guides/automations.html#interval
 interval:
-  - interval: 90min
+  - interval: 120min
     then:
       - if:
           condition:
