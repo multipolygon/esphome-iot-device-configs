@@ -26,6 +26,12 @@ esphome:
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 
+globals:
+  - id: pump_counter
+    type: int
+  - id: temp
+    type: int
+
 # https://esphome.io/components/i2c.html
 i2c:
 
@@ -47,18 +53,18 @@ sensor:
       name: $PREFIX Temperature
       retain: false
       filters:
-        - sliding_window_moving_average:
-            window_size: 10
-            send_every: 10
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
 
     humidity:
       id: humid_sensor
       name: $PREFIX Humidity
       retain: false
       filters:
-        - sliding_window_moving_average:
-            window_size: 10
-            send_every: 10
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
 
   # https://esphome.io/components/sensor/bh1750.html
   - platform: bh1750
@@ -69,9 +75,18 @@ sensor:
     update_interval: 1min
     retain: false
     filters:
-      - sliding_window_moving_average:
-          window_size: 10
-          send_every: 10
+      sliding_window_moving_average:
+        window_size: 10
+        send_every: 10
+
+  - name: $PREFIX Pump Counter
+    platform: template
+    unit_of_measurement: "/day"
+    icon: mdi:counter
+    accuracy_decimals: 0
+    lambda: return id(pump_counter);
+    retain: false
+    update_interval: 10min
 
 # https://esphome.io/components/switch/index.html
 switch:
@@ -88,7 +103,7 @@ switch:
     name: $PREFIX Pump
     restore_mode: ALWAYS_OFF
     on_turn_on:
-      - script.execute: pump_timer
+      script.execute: pump_timer
 
   - platform: restart
     name: $PREFIX Restart
@@ -109,6 +124,18 @@ binary_sensor:
     device_class: moisture
     retain: false
 
+  - id: daytime_sensor
+    name: $PREFIX Daytime
+    platform: template
+    device_class: light
+    lambda: return id(lux_sensor).state > 1000;
+    filters:
+      - delayed_on: 10min
+      - delayed_off: 1h
+    on_release:
+      then:
+        lambda: id(pump_counter) = 0;
+
   # https://esphome.io/components/binary_sensor/template.html
   - platform: template
     id: active_binary_sensor
@@ -118,7 +145,7 @@ binary_sensor:
       if (
         id(enable_switch).state
         && id(water_tank_binary_sensor).state
-        && id(lux_sensor).state > 5000
+        && id(daytime_sensor).state
         && id(temp_sensor).state > 10
         && id(temp_sensor).state < 40
         && id(humid_sensor).state < 70
@@ -132,7 +159,7 @@ binary_sensor:
 script:
   - id: pump_timer
     then:
-      - switch.turn_on: pump_switch
+      - lambda: id(pump_counter) += 1;
       - if:
           condition:
             lambda: return id(temp_sensor).state > 30;
@@ -152,11 +179,11 @@ script:
 interval:
   - interval: 120min
     then:
-      - if:
-          condition:
-            - binary_sensor.is_on: active_binary_sensor
-          then:
-            - output.turn_on: activated_led
-            - script.execute: pump_timer
-          else:
-            - output.turn_off: activated_led
+      if:
+        condition:
+          binary_sensor.is_on: active_binary_sensor
+        then:
+          - output.turn_on: activated_led
+          - switch.turn_on: pump_switch
+        else:
+          output.turn_off: activated_led
