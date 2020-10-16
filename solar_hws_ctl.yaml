@@ -5,8 +5,11 @@ substitutions:
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
+  TANK_TARGET_TEMP: "55"
   TANK_MAX_TEMP: "75"
   SOLAR_MAX_TEMP: "100"
+  POLLING_INTERVAL: "10" # seconds
+  UPDATE_INTERVAL: "300" # seconds
 
 esphome:
   name: $NAME
@@ -15,14 +18,23 @@ esphome:
   build_path: _builds/$NAME/
   on_boot:
     - script.execute: control_logic
-    - delay: 10s
+    - delay: ${POLLING_INTERVAL}s
     - climate.control:
         id: tank_thermostat
         mode: HEAT
+    - component.update: tank_thermostat_target_template_sensor
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
+
+globals:
+  - id: pump_on_counter
+    type: float
+  - id: pump_off_counter
+    type: float
+  - id: temp
+    type: float
 
 i2c:
 
@@ -53,17 +65,14 @@ sensor:
     # lambda: return (id(adc_sensor).state - 36.1997) / 6.26956;
     update_interval: never
 
-  - name: $PREFIX Solar
+  - id: solar_temp_template_sensor
+    name: $PREFIX Solar
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
     lambda: return id(solar_temp_sensor).state;
     retain: false
-    update_interval: 1min
-    filters:
-      - median:
-          window_size: 5
-          send_every: 5
+    update_interval: ${UPDATE_INTERVAL}s
 
   - id: tank_temp_template_sensor
     name: $PREFIX Tank
@@ -72,23 +81,32 @@ sensor:
     accuracy_decimals: 0
     lambda: return id(tank_temp_sensor).state;
     retain: false
-    update_interval: 1min
-    filters:
-      - median:
-          window_size: 5
-          send_every: 5
+    update_interval: ${UPDATE_INTERVAL}s
 
-  - name: $PREFIX Target
+  - id: tank_thermostat_target_template_sensor
+    name: $PREFIX Target
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
     lambda: return id(tank_thermostat).target_temperature;
     retain: false
-    update_interval: 5min
+    update_interval: ${UPDATE_INTERVAL}s
+
+  - name: $PREFIX Pump Duty Cycle
+    platform: template
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    lambda: |-
+        id(temp) = id(pump_on_counter) / (id(pump_on_counter) + id(pump_off_counter)) * 100;
+        id(pump_on_counter) = 0;
+        id(pump_off_counter) = 0;
+        return id(temp);
+    retain: false
+    update_interval: ${UPDATE_INTERVAL}s
+    icon: mdi:progress-clock
 
 switch:
   - id: pump_switch
-    name: $PREFIX Pump
     platform: gpio
     pin: D8
     retain: false
@@ -109,7 +127,7 @@ climate:
     name: $PREFIX Thermostat
     platform: thermostat
     sensor: tank_temp_template_sensor
-    default_target_temperature_low: 55 °C
+    default_target_temperature_low: $TANK_TARGET_TEMP °C
     heat_action:
       delay: 1ms
     idle_action:
@@ -152,9 +170,16 @@ script:
                     switch.turn_off: pump_switch
           else:
             switch.turn_off: pump_switch
+      - if:
+          condition:
+            switch.is_on: pump_switch
+          then:
+            lambda: id(pump_on_counter) += 1;
+          else:
+            lambda: id(pump_off_counter) += 1;
 
 interval:
-  - interval: 10s
+  - interval: ${POLLING_INTERVAL}s
     then:
       script.execute: control_logic
 
