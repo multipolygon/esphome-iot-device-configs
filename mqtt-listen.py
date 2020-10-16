@@ -10,6 +10,7 @@ def args():
     p = ArgumentParser()
     p.add_argument("--secrets", '-s', action="store", type=str, help='Transfer specified file as secrets.json')
     p.add_argument("--ignore-retained", '-r', action="store_true", help='Ignore retained messages.')
+    p.add_argument("--topic", '-t', action="store", type=str, help='MQTT topic to subscribe to.')
     return p.parse_args()
 
 args = args()
@@ -17,7 +18,7 @@ args = args()
 with open(args.secrets or 'secrets.yaml') as f:
     secrets = yaml.load(f, Loader=yaml.FullLoader)
 
-topic = '/'.join((i for i in [
+topic = args.topic or '/'.join((i for i in [
     secrets['MQTT_PREFIX'],
     '#',
 ] if i))
