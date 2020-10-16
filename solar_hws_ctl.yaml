@@ -5,7 +5,7 @@ substitutions:
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
-  TANK_MAX_TEMP: "80"
+  TANK_MAX_TEMP: "75"
   SOLAR_MAX_TEMP: "100"
 
 esphome:
@@ -14,11 +14,11 @@ esphome:
   board: d1_mini
   build_path: _builds/$NAME/
   on_boot:
+    - script.execute: control_logic
     - delay: 10s
     - climate.control:
         id: tank_thermostat
         mode: HEAT
-    - component.update: tank_thermostat_target
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -65,7 +65,8 @@ sensor:
           window_size: 5
           send_every: 5
 
-  - name: $PREFIX Tank
+  - id: tank_temp_template_sensor
+    name: $PREFIX Tank
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
@@ -77,8 +78,7 @@ sensor:
           window_size: 5
           send_every: 5
 
-  - id: tank_thermostat_target
-    name: $PREFIX Target
+  - name: $PREFIX Target
     platform: template
     unit_of_measurement: °C
     accuracy_decimals: 0
@@ -108,19 +108,19 @@ climate:
   - id: tank_thermostat
     name: $PREFIX Thermostat
     platform: thermostat
-    sensor: tank_temp_sensor
-    default_target_temperature_low: 65 °C
+    sensor: tank_temp_template_sensor
+    default_target_temperature_low: 55 °C
     heat_action:
-      delay: 1s
+      delay: 1ms
     idle_action:
-      delay: 1s
+      delay: 1ms
     visual:
       min_temperature: 50 °C
       max_temperature: $TANK_MAX_TEMP °C
       temperature_step: 1 °C
 
-interval:
-  - interval: 10s
+script:
+  - id: control_logic
     then:
       - switch.turn_on: solar_ntc_switch
       - component.update: adc_sensor
@@ -152,6 +152,11 @@ interval:
                     switch.turn_off: pump_switch
           else:
             switch.turn_off: pump_switch
+
+interval:
+  - interval: 10s
+    then:
+      script.execute: control_logic
 
 font:
   # https://www.dafont.com/andrew-tyler.d2526
