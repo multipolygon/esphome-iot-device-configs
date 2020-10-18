@@ -1,0 +1,90 @@
+substitutions:
+  NAME: backyard_garden_hub
+  PREFIX: Backyard Garden Hub
+  WIFI_AP_SSID: ESP-BGBH
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+i2c:
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - name: $PREFIX ADC
+    id: battery
+    platform: adc
+    pin: A0
+    update_interval: 60s
+    accuracy_decimals: 3
+
+  - name: $PREFIX Battery
+    platform: template
+    lambda: return id(battery).state;
+    update_interval: 60s
+    accuracy_decimals: 1
+    icon: mdi:car-battery
+    filters:
+      - multiply: 21.797
+      # - calibrate_linear:
+      #     - 0.586 -> 12.9
+      #     - 0.601 -> 13.1
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+  - platform: sht3xd
+    address: 0x45
+    update_interval: 60s
+
+    temperature:
+      id: temp_sensor
+      name: $PREFIX Temperature
+      retain: false
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+    humidity:
+      id: humid_sensor
+      name: $PREFIX Humidity
+      retain: false
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+output:
+  - id: d5
+    platform: gpio
+    pin: D5
+
+  - id: d6
+    platform: gpio
+    pin: D6
+
+light:
+  - platform: binary
+    name: Backyard Garden Lights
+    output: d5
+    restore_mode: ALWAYS_OFF
+
+  - platform: binary
+    name: Backyard Fernery Lights
+    output: d6
+    restore_mode: ALWAYS_OFF

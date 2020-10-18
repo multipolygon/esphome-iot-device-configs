@@ -152,9 +152,9 @@ script:
           condition:
             lambda: |-
                 return (
-                  id(tank_temp_sensor).state <= id(tank_thermostat).target_temperature &&
-                  id(tank_temp_sensor).state <= $TANK_MAX_TEMP &&
-                  id(solar_temp_sensor).state <= $SOLAR_MAX_TEMP
+                  id(tank_temp_sensor).state <= id(tank_thermostat).target_temperature
+                  && id(tank_temp_sensor).state <= $TANK_MAX_TEMP
+                  && id(solar_temp_sensor).state <= $SOLAR_MAX_TEMP
                 );
           then:
             if:

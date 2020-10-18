@@ -59,6 +59,9 @@ esp32_camera:
   horizontal_mirror: $CAMERA_HORIZONTAL_MIRROR
 
 switch:
+  - platform: restart
+    name: $PREFIX Restart
+
   - id: red_led
     name: $PREFIX Red LED
     platform: gpio

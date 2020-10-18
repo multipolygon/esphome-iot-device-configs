@@ -15,6 +15,8 @@ substitutions:
   REBOOT_TIMEOUT: 5.1h
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
+  WARM_WEATHER_TIMER: "45"
+  HOT_WEATHER_TIMER: "60"
 
 esphome:
   name: $NAME
@@ -27,7 +29,7 @@ esphome:
 <<: !include partial/mqtt.yaml
 
 globals:
-  - id: pump_counter
+  - id: pump_time
     type: int
   - id: temp
     type: int
@@ -79,14 +81,15 @@ sensor:
         window_size: 10
         send_every: 10
 
-  - name: $PREFIX Pump Counter
+  - id: pump_time_sensor
+    name: $PREFIX Pump Time
     platform: template
-    unit_of_measurement: "/day"
-    icon: mdi:counter
+    unit_of_measurement: "s"
+    icon: mdi:progress-clock
     accuracy_decimals: 0
-    lambda: return id(pump_counter);
-    retain: false
-    update_interval: 10min
+    lambda: return id(pump_time);
+    retain: true
+    update_interval: never
 
 # https://esphome.io/components/switch/index.html
 switch:
@@ -134,7 +137,7 @@ binary_sensor:
       - delayed_off: 1h
     on_release:
       then:
-        lambda: id(pump_counter) = 0;
+        lambda: id(pump_time) = 0;
 
   # https://esphome.io/components/binary_sensor/template.html
   - platform: template
@@ -159,20 +162,23 @@ binary_sensor:
 script:
   - id: pump_timer
     then:
-      - lambda: id(pump_counter) += 1;
       - if:
           condition:
             lambda: return id(temp_sensor).state > 30;
           then:
             - logger.log:
-                format: "60s timer..."
+                format: "${HOT_WEATHER_TIMER} sec timer..."
                 level: INFO
-            - delay: 60s
+            - lambda: id(pump_time) += ${HOT_WEATHER_TIMER};
+            - component.update: pump_time_sensor
+            - delay: ${HOT_WEATHER_TIMER}s
           else:
             - logger.log:
-                format: "45s timer..."
+                format: "${WARM_WEATHER_TIMER} sec timer..."
                 level: INFO
-            - delay: 45s
+            - lambda: id(pump_time) += ${WARM_WEATHER_TIMER};
+            - component.update: pump_time_sensor
+            - delay: ${WARM_WEATHER_TIMER}s
       - switch.turn_off: pump_switch
 
 # https://esphome.io/guides/automations.html#interval
