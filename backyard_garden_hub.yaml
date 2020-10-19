@@ -37,7 +37,9 @@ sensor:
     lambda: return id(battery).state;
     update_interval: 60s
     accuracy_decimals: 1
+    unit_of_measurement: V
     icon: mdi:car-battery
+
     filters:
       - multiply: 21.797
       # - calibrate_linear:
