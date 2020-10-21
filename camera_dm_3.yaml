@@ -1,5 +1,5 @@
 substitutions:
-  ID: "2"
+  ID: "3"
   NAME: camera_dm_$ID
   PREFIX: Camera DM $ID
   WIFI_AP_SSID: ESP-DM-$ID

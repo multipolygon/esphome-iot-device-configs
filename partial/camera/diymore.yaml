@@ -71,12 +71,11 @@ output:
     inverted: true
 
   - id: white_led
-    platform: ledc
+    platform: gpio
     pin: GPIO4
-    frequency: 1220 Hz
 
 light:
-  - platform: monochromatic
+  - platform: binary
     name: $PREFIX White LED
     output: white_led
 
