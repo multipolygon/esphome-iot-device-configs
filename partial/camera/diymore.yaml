@@ -6,7 +6,7 @@ esphome:
 
 status_led:
   pin:
-    number: GPIO14
+    number: GPIO33
     inverted: true
 
 <<: !include ../wifi.yaml
@@ -63,3 +63,26 @@ esp32_camera:
   saturation: 0
   vertical_flip: $CAMERA_VERTICAL_FLIP
   horizontal_mirror: $CAMERA_HORIZONTAL_MIRROR
+
+output:
+  - id: red_led
+    platform: gpio
+    pin: GPIO33
+    inverted: true
+
+  - id: white_led
+    platform: ledc
+    pin: GPIO4
+    frequency: 1220 Hz
+
+light:
+  - platform: monochromatic
+    name: $PREFIX White LED
+    output: white_led
+
+interval:
+  - interval: 60s
+    then:
+      - output.turn_on: red_led
+      - delay: 1s
+      - output.turn_off: red_led
