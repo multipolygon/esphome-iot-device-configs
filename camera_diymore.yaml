@@ -1,25 +1,42 @@
+## eg: `pipenv run esphome -s ID 1 _____.yaml run`
+
+substitutions:
+  NAME: camera_dm_$ID
+  PREFIX: Camera DM $ID
+  WIFI_AP_SSID: ESP-DM-$ID
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+
+  # 800x600 - SVGA
+  # 1024x768 - XGA
+  # 1280x1024 - SXGA (maximum)
+  RES: SXGA
+  FPS: "10"
+  VFLIP: "no"
+  HFLIP: "no"
+
 esphome:
   name: $NAME
   platform: ESP32
   board: nodemcu-32s
   build_path: _builds/$NAME/
 
-status_led:
-  pin:
-    number: GPIO33
-    inverted: true
+# status_led:
+#   pin:
+#     number: GPIO33
+#     inverted: true
 
-<<: !include ../wifi.yaml
+<<: !include partial/wifi.yaml
 
 api:
   reboot_timeout: $REBOOT_TIMEOUT
 
 text_sensor:
-  - <<: !include ../wifi_ip_addr_text_sensor.yaml
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
 
 sensor:
-  - <<: !include ../wifi_rssi_sensor.yaml
-  - <<: !include ../uptime_sensor.yaml
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
 
 ## DIY More / AI Thinker ESP32 Camera
 ## https://www.aliexpress.com/item/OV2640-ESP32-CAM-Wireless-WiFi-Bluetooth-Module-Camera-Development-Board-ESP32-OV7670-DC-5V-Dual-core/32963661794.html
@@ -55,15 +72,19 @@ esp32_camera:
 
   # Image:
   idle_framerate: 0.01 fps
-  max_framerate: $CAMERA_MAX_FRAMERATE
-  resolution: $CAMERA_RESOLUTION
+  max_framerate: $FPS fps
+  resolution: $RES
   jpeg_quality: 10
   contrast: 0
   brightness: 0
   saturation: 0
-  vertical_flip: $CAMERA_VERTICAL_FLIP
-  horizontal_mirror: $CAMERA_HORIZONTAL_MIRROR
+  vertical_flip: $VFLIP
+  horizontal_mirror: $HFLIP
 
+switch:
+  - platform: restart
+    name: $PREFIX Restart
+    
 output:
   - id: red_led
     platform: gpio
@@ -80,7 +101,7 @@ light:
     output: white_led
 
 interval:
-  - interval: 60s
+  - interval: 10s
     then:
       - output.turn_on: red_led
       - delay: 1s
