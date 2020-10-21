@@ -19,7 +19,7 @@ esphome:
   name: $NAME
   platform: ESP32
   board: nodemcu-32s
-  build_path: _builds/$NAME/
+  build_path: _builds/camera_m5_xf/
 
 <<: !include partial/wifi.yaml
 

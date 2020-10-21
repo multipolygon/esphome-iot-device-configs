@@ -19,7 +19,7 @@ esphome:
   name: $NAME
   platform: ESP32
   board: nodemcu-32s
-  build_path: _builds/$NAME/
+  build_path: _builds/camera_diymore/
 
 # status_led:
 #   pin:
@@ -84,7 +84,7 @@ esp32_camera:
 switch:
   - platform: restart
     name: $PREFIX Restart
-    
+
 output:
   - id: red_led
     platform: gpio
