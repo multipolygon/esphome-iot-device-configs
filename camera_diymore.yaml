@@ -19,7 +19,7 @@ esphome:
   name: $NAME
   platform: ESP32
   board: nodemcu-32s
-  build_path: _builds/camera_diymore/
+  build_path: _builds/$NAME/
 
 # status_led:
 #   pin:
@@ -30,6 +30,7 @@ esphome:
 
 api:
   reboot_timeout: $REBOOT_TIMEOUT
+  password: !secret API_PASSWORD
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -84,7 +85,7 @@ esp32_camera:
 switch:
   - platform: restart
     name: $PREFIX Restart
-
+    
 output:
   - id: red_led
     platform: gpio

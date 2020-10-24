@@ -1,0 +1,84 @@
+substitutions:
+  NAME: heater_blanket_switch
+  PREFIX: Heater Blanket Switch
+  WIFI_AP_SSID: ESP-EBS
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: esp8285
+  comment: Sonoff S26 No. 2
+  build_path: _builds/$NAME/
+
+globals:
+  - id: daytime
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+<<: !include partial/wifi.yaml
+
+# https://esphome.io/components/mqtt.html
+mqtt:
+  id: mqtt_client
+  broker: !secret MQTT_BROKER
+  username: !secret MQTT_USERNAME
+  password: !secret MQTT_PASSWORD
+  discovery_prefix: $MQTT_PREFIX/homeassistant
+  topic_prefix: $MQTT_PREFIX/$NAME
+  reboot_timeout: $REBOOT_TIMEOUT
+  # https://esphome.io/components/mqtt.html#on-message-trigger
+  on_message:
+    - topic: time/daytime
+      payload: "ON"
+      then:
+        lambda: id(daytime) = true;
+    - topic: time/daytime
+      payload: "OFF"
+      then:
+        lambda: id(daytime) = false;
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+status_led:
+  pin: GPIO13
+
+binary_sensor:
+  - id: daytime_sensor
+    name: $PREFIX Daytime
+    platform: template
+    lambda: return id(daytime);
+    filters:
+      - delayed_on: 2h
+      - delayed_off: 2h
+    on_press:
+      then:
+        switch.turn_on: relay_switch
+    on_release:
+      then:
+        switch.turn_off: relay_switch
+
+  - name: $PREFIX Button
+    platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    on_press:
+      then:
+        switch.toggle: relay_switch
+
+switch:
+  - id: relay_switch
+    name: $PREFIX
+    platform: gpio
+    pin: GPIO12
+    restore_mode: ALWAYS_OFF

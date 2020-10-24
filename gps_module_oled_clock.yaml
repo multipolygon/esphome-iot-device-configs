@@ -1,0 +1,199 @@
+substitutions:
+  NAME: gps_module
+  PREFIX: GPS Module
+  WIFI_AP_SSID: ESP-BGBH
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+# https://esphome.io/components/sun.html
+sun:
+  id: sun_id
+  latitude: !secret LATITUDE
+  longitude: !secret LONGITUDE
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: sunrise_sensor
+    name: $PREFIX Sunrise
+    platform: sun
+    type: sunrise
+    state_topic: time/sun/sunrise
+    retain: false
+    update_interval: never
+
+  - id: sunset_sensor
+    name: $PREFIX Sunset
+    type: sunset
+    platform: sun
+    state_topic: time/sun/sunset
+    retain: false
+    update_interval: never
+
+  # https://esphome.io/components/text_sensor/template.html
+  - id: daytime_sensor
+    name: $PREFIX Daytime
+    platform: template
+    lambda: |-
+        if (id(sun_elevation_sensor).state > 0) {
+          id(oled).set_brightness(255.0);
+          return {"ON"};
+        } else {
+          id(oled).set_brightness(0.0);
+          return {"OFF"};
+        }
+    icon: mdi:theme-light-dark
+    state_topic: time/daytime
+    retain: false
+    update_interval: never
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - id: hour_sensor
+    name: $PREFIX Hour
+    platform: template
+    lambda: return id(gps_time).now().hour;
+    icon: mdi:clock
+    accuracy_decimals: 0
+    unit_of_measurement: h
+    state_topic: time/hour
+    retain: false
+    update_interval: never
+
+  - id: minute_sensor
+    name: $PREFIX Minute
+    platform: template
+    lambda: return id(gps_time).now().minute;
+    icon: mdi:clock
+    accuracy_decimals: 0
+    unit_of_measurement: m
+    state_topic: time/minute
+    retain: false
+    update_interval: never
+
+  # https://esphome.io/components/sun.html
+  - id: sun_elevation_sensor
+    name: $PREFIX Sun Elevation
+    platform: sun
+    type: elevation
+    state_topic: time/sun/elevation
+    retain: false
+    update_interval: never
+
+  - id: sat_sensor
+    name: $PREFIX Sats
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().satellites.value();
+    accuracy_decimals: 0
+    state_topic: location/sats
+    unit_of_measurement: x
+
+  - id: lat_sensor
+    name: $PREFIX Lat
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().location.lat();
+    accuracy_decimals: 6
+    state_topic: location/lat
+    unit_of_measurement: °
+
+  - id: lng_sensor
+    name: $PREFIX Lng
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().location.lng();
+    accuracy_decimals: 6
+    state_topic: location/lng
+    unit_of_measurement: °
+
+  - id: alt_sensor
+    name: $PREFIX Alt
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().altitude.meters();
+    accuracy_decimals: 2
+    state_topic: location/alt
+    unit_of_measurement: m
+
+binary_sensor:
+  - id: valid_time_sensor
+    name: $PREFIX Valid
+    platform: template
+    lambda: return id(gps_time).now().is_valid();
+    retain: false
+
+uart:
+  rx_pin: D5
+  baud_rate: 9600
+
+# https://esphome.io/components/gps.html
+gps:
+  id: gps_module
+
+time:
+  - id: gps_time
+    platform: gps
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - if:
+              condition:
+                - binary_sensor.is_on: valid_time_sensor
+              then:
+                - component.update: hour_sensor
+                - component.update: minute_sensor
+      - seconds: 0
+        minutes: /15
+        then:
+          - if:
+              condition:
+                - binary_sensor.is_on: valid_time_sensor
+              then:
+                - component.update: sunrise_sensor
+                - component.update: sunset_sensor
+                - component.update: daytime_sensor
+                - component.update: sun_elevation_sensor
+                - if:
+                    condition:
+                      lambda: return id(gps_module).get_tiny_gps().satellites.value() > 0;
+                    then:
+                      lambda: |-
+                          id(sun_id).set_latitude(id(gps_module).get_tiny_gps().location.lat());
+                          id(sun_id).set_longitude(id(gps_module).get_tiny_gps().location.lng());
+
+font:
+  # https://www.dafont.com/andrew-tyler.d2526
+  - id: small_font
+    file: 'DejaVuSansMono.ttf'
+    size: 10
+
+  - id: large_font
+    file: 'DejaVuSansMono.ttf'
+    size: 22
+
+i2c:
+
+# https://esphome.io/components/display/index.html
+# https://esphome.io/components/display/ssd1306.html
+display:
+  - id: oled
+    platform: ssd1306_i2c
+    model: SSD1306 64x48
+    address: 0x3C
+    lambda: |-
+      it.strftime(32, 0, id(small_font), TextAlign::TOP_CENTER, "%e-%m-%Y", id(gps_time).now());
+      it.strftime(32, 24, id(large_font), TextAlign::CENTER, "%H:%M", id(gps_time).now());
+      it.strftime(64, 48, id(small_font), TextAlign::BOTTOM_RIGHT, "%S", id(gps_time).now());
+      it.strftime(0, 48, id(small_font), TextAlign::BOTTOM_LEFT, "%a", id(gps_time).now());
+      // it.printf(32, 48, id(small_font), TextAlign::BOTTOM_CENTER, "%d", id(gps_module).get_tiny_gps().satellites.value());

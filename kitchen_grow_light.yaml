@@ -1,0 +1,86 @@
+substitutions:
+  NAME: kitchen_grow_light
+  PREFIX: Kitchen Grow Light
+  WIFI_AP_SSID: ESP-KGL
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: esp8285
+  comment: Sonoff S26 No. 3
+  build_path: _builds/$NAME/
+
+globals:
+  - id: daytime
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+<<: !include partial/wifi.yaml
+
+# https://esphome.io/components/mqtt.html
+mqtt:
+  id: mqtt_client
+  broker: !secret MQTT_BROKER
+  username: !secret MQTT_USERNAME
+  password: !secret MQTT_PASSWORD
+  discovery_prefix: $MQTT_PREFIX/homeassistant
+  topic_prefix: $MQTT_PREFIX/$NAME
+  reboot_timeout: $REBOOT_TIMEOUT
+  # https://esphome.io/components/mqtt.html#on-message-trigger
+  on_message:
+    - topic: time/daytime
+      payload: "ON"
+      then:
+        lambda: id(daytime) = true;
+    - topic: time/daytime
+      payload: "OFF"
+      then:
+        lambda: id(daytime) = false;
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+status_led:
+  pin: GPIO13
+
+binary_sensor:
+  - id: daytime_sensor
+    name: $PREFIX Daytime
+    platform: template
+    lambda: return id(daytime);
+    on_press:
+      then:
+        light.turn_on: relay_light
+    on_release:
+      then:
+        light.turn_off: relay_light
+
+  - name: $PREFIX Button
+    platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    on_press:
+      then:
+        light.toggle: relay_light
+
+output:
+  - id: relay_output
+    platform: gpio
+    pin: GPIO12
+
+light:
+  - id: relay_light
+    name: $PREFIX
+    platform: binary
+    output: relay_output
+    restore_mode: ALWAYS_OFF

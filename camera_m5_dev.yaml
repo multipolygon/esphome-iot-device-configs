@@ -17,12 +17,13 @@ esphome:
   name: $NAME
   platform: ESP32
   board: nodemcu-32s
-  build_path: _builds/camera_m5_dev/  
+  build_path: _builds/$NAME/  
 
 <<: !include partial/wifi.yaml
 
 api:
   reboot_timeout: $REBOOT_TIMEOUT
+  password: !secret API_PASSWORD
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml

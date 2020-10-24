@@ -5,6 +5,7 @@ substitutions:
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
+  UPDATE_INTERVAL: 10min
 
 esphome:
   name: $NAME
@@ -12,9 +13,35 @@ esphome:
   board: d1_mini
   build_path: _builds/$NAME/
 
+globals:
+  - id: battery_min
+    type: float
+    initial_value: "100"
+  - id: battery_max
+    type: float
+    initial_value: "-100"
+
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+
+# https://esphome.io/components/mqtt.html
+mqtt:
+  id: mqtt_client
+  broker: !secret MQTT_BROKER
+  username: !secret MQTT_USERNAME
+  password: !secret MQTT_PASSWORD
+  discovery_prefix: $MQTT_PREFIX/homeassistant
+  topic_prefix: $MQTT_PREFIX/$NAME
+  reboot_timeout: $REBOOT_TIMEOUT
+  # https://esphome.io/components/mqtt.html#on-message-trigger
+  on_message:
+    topic: time/hour
+    payload: "0"
+    then:
+      - component.update: battery_min_sensor
+      - component.update: battery_max_sensor
+      - lambda: id(battery_min) = id(battery).state;
+      - lambda: id(battery_max) = id(battery).state;
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -26,33 +53,51 @@ sensor:
   - <<: !include partial/uptime_sensor.yaml
 
   - name: $PREFIX ADC
-    id: battery
+    id: adc1v
     platform: adc
     pin: A0
-    update_interval: 60s
+    update_interval: $UPDATE_INTERVAL
     accuracy_decimals: 3
 
+  - id: battery
+    platform: template
+    lambda: return id(adc1v).state * 21.797;
+    update_interval: 1min
+
   - name: $PREFIX Battery
+    id: battery_10min
     platform: template
     lambda: return id(battery).state;
-    update_interval: 60s
+    update_interval: 1min
     accuracy_decimals: 1
     unit_of_measurement: V
     icon: mdi:car-battery
-
     filters:
-      - multiply: 21.797
-      # - calibrate_linear:
-      #     - 0.586 -> 12.9
-      #     - 0.601 -> 13.1
       - sliding_window_moving_average:
           window_size: 10
           send_every: 10
 
+  - name: $PREFIX Battery Min
+    id: battery_min_sensor
+    platform: template
+    lambda: return id(battery_min);
+    update_interval: never
+    accuracy_decimals: 1
+    unit_of_measurement: V
+    icon: mdi:car-battery
+
+  - name: $PREFIX Battery Max
+    id: battery_max_sensor
+    platform: template
+    lambda: return id(battery_max);
+    update_interval: never
+    accuracy_decimals: 1
+    unit_of_measurement: V
+    icon: mdi:car-battery
+
   - platform: sht3xd
     address: 0x45
-    update_interval: 60s
-
+    update_interval: $UPDATE_INTERVAL
     temperature:
       id: temp_sensor
       name: $PREFIX Temperature
@@ -61,7 +106,6 @@ sensor:
         sliding_window_moving_average:
           window_size: 10
           send_every: 10
-
     humidity:
       id: humid_sensor
       name: $PREFIX Humidity
@@ -90,3 +134,14 @@ light:
     name: Backyard Fernery Lights
     output: d6
     restore_mode: ALWAYS_OFF
+
+interval:
+  - interval: 1min
+    then:
+      lambda: |-
+        if (id(battery).state < id(battery_min)) {
+          id(battery_min) = id(battery).state;
+        }
+        if (id(battery).state > id(battery_max)) {
+          id(battery_max) = id(battery).state;
+        }
