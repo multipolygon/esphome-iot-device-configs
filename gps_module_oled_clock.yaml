@@ -16,11 +16,47 @@ esphome:
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 
+i2c:
+
+uart:
+  rx_pin: D5
+  baud_rate: 9600
+
+# https://esphome.io/components/gps.html
+# http://arduiniana.org/libraries/tinygpsplus/
+gps:
+  id: gps_module
+
 # https://esphome.io/components/sun.html
 sun:
   id: sun_id
   latitude: !secret LATITUDE
   longitude: !secret LONGITUDE
+
+time:
+  - id: gps_time
+    platform: gps
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - if:
+              condition:
+                - binary_sensor.is_on: valid_time_sensor
+              then:
+                - component.update: hour_sensor
+                - component.update: minute_sensor
+      - seconds: 0
+        minutes: /15
+        then:
+          - if:
+              condition:
+                - binary_sensor.is_on: valid_time_sensor
+              then:
+                - component.update: sunrise_sensor
+                - component.update: sunset_sensor
+                - component.update: sun_elevation_sensor
+                - component.update: daytime_sensor
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -161,40 +197,6 @@ binary_sensor:
     lambda: return id(gps_time).now().is_valid();
     retain: false
 
-uart:
-  rx_pin: D5
-  baud_rate: 9600
-
-# https://esphome.io/components/gps.html
-# http://arduiniana.org/libraries/tinygpsplus/
-gps:
-  id: gps_module
-
-time:
-  - id: gps_time
-    platform: gps
-    on_time:
-      - seconds: 0
-        minutes: /1
-        then:
-          - if:
-              condition:
-                - binary_sensor.is_on: valid_time_sensor
-              then:
-                - component.update: hour_sensor
-                - component.update: minute_sensor
-      - seconds: 0
-        minutes: /15
-        then:
-          - if:
-              condition:
-                - binary_sensor.is_on: valid_time_sensor
-              then:
-                - component.update: sunrise_sensor
-                - component.update: sunset_sensor
-                - component.update: sun_elevation_sensor
-                - component.update: daytime_sensor
-
 font:
   # https://www.dafont.com/andrew-tyler.d2526
   - id: small_font
@@ -204,8 +206,6 @@ font:
   - id: large_font
     file: 'DejaVuSansMono.ttf'
     size: 22
-
-i2c:
 
 # https://esphome.io/components/display/index.html
 # https://esphome.io/components/display/ssd1306.html
