@@ -46,7 +46,7 @@ text_sensor:
     name: $PREFIX Daytime
     platform: template
     lambda: |-
-        if (id(sun_elevation_sensor).state > 0) {
+        if (id(sun_elevation_sensor).state > 0.0) {
           id(oled).set_brightness(255.0);
           return {"ON"};
         } else {
@@ -66,9 +66,9 @@ sensor:
     name: $PREFIX Hour
     platform: template
     lambda: return id(gps_time).now().hour;
-    icon: mdi:clock
     accuracy_decimals: 0
     unit_of_measurement: h
+    icon: mdi:clock
     state_topic: time/hour
     retain: false
     update_interval: never
@@ -77,9 +77,9 @@ sensor:
     name: $PREFIX Minute
     platform: template
     lambda: return id(gps_time).now().minute;
-    icon: mdi:clock
     accuracy_decimals: 0
     unit_of_measurement: m
+    icon: mdi:clock
     state_topic: time/minute
     retain: false
     update_interval: never
@@ -93,13 +93,23 @@ sensor:
     retain: false
     update_interval: never
 
-  - id: sat_sensor
+  - id: hdop_sensor
+    name: $PREFIX HDOP
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().hdop.value();
+    accuracy_decimals: 0
+    state_topic: location/hdop
+    unit_of_measurement: dop
+    icon: mdi:signal-distance-variant
+
+  - id: satellite_sensor
     name: $PREFIX Sats
     platform: template
     lambda: return id(gps_module).get_tiny_gps().satellites.value();
     accuracy_decimals: 0
     state_topic: location/sats
     unit_of_measurement: x
+    icon: mdi:satellite-variant
 
   - id: lat_sensor
     name: $PREFIX Lat
@@ -108,6 +118,15 @@ sensor:
     accuracy_decimals: 6
     state_topic: location/lat
     unit_of_measurement: °
+    icon: mdi:latitude
+    filters:
+      - filter_out: 0.0
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+    on_value:
+      then:
+        lambda: id(sun_id).set_latitude(x);
 
   - id: lng_sensor
     name: $PREFIX Lng
@@ -116,6 +135,15 @@ sensor:
     accuracy_decimals: 6
     state_topic: location/lng
     unit_of_measurement: °
+    icon: mdi:longitude
+    filters:
+      - filter_out: 0.0
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+    on_value:
+      then:
+        lambda: id(sun_id).set_longitude(x);
 
   - id: alt_sensor
     name: $PREFIX Alt
@@ -124,6 +152,7 @@ sensor:
     accuracy_decimals: 2
     state_topic: location/alt
     unit_of_measurement: m
+    icon: mdi:elevation-rise
 
 binary_sensor:
   - id: valid_time_sensor
@@ -137,6 +166,7 @@ uart:
   baud_rate: 9600
 
 # https://esphome.io/components/gps.html
+# http://arduiniana.org/libraries/tinygpsplus/
 gps:
   id: gps_module
 
@@ -162,15 +192,8 @@ time:
               then:
                 - component.update: sunrise_sensor
                 - component.update: sunset_sensor
-                - component.update: daytime_sensor
                 - component.update: sun_elevation_sensor
-                - if:
-                    condition:
-                      lambda: return id(gps_module).get_tiny_gps().satellites.value() > 0;
-                    then:
-                      lambda: |-
-                          id(sun_id).set_latitude(id(gps_module).get_tiny_gps().location.lat());
-                          id(sun_id).set_longitude(id(gps_module).get_tiny_gps().location.lng());
+                - component.update: daytime_sensor
 
 font:
   # https://www.dafont.com/andrew-tyler.d2526
