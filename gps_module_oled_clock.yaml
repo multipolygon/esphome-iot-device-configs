@@ -38,21 +38,13 @@ time:
     platform: gps
     on_time:
       - seconds: 0
-        minutes: /1
+        minutes: 0
         then:
           - if:
               condition:
                 - binary_sensor.is_on: valid_time_sensor
               then:
                 - component.update: hour_sensor
-                - component.update: minute_sensor
-      - seconds: 0
-        minutes: /15
-        then:
-          - if:
-              condition:
-                - binary_sensor.is_on: valid_time_sensor
-              then:
                 - component.update: sunrise_sensor
                 - component.update: sunset_sensor
                 - component.update: sun_elevation_sensor
@@ -66,7 +58,6 @@ text_sensor:
     platform: sun
     type: sunrise
     state_topic: time/sun/sunrise
-    retain: false
     update_interval: never
 
   - id: sunset_sensor
@@ -74,7 +65,6 @@ text_sensor:
     type: sunset
     platform: sun
     state_topic: time/sun/sunset
-    retain: false
     update_interval: never
 
   # https://esphome.io/components/text_sensor/template.html
@@ -91,7 +81,6 @@ text_sensor:
         }
     icon: mdi:theme-light-dark
     state_topic: time/daytime
-    retain: false
     update_interval: never
 
 sensor:
@@ -109,24 +98,13 @@ sensor:
     retain: false
     update_interval: never
 
-  - id: minute_sensor
-    name: $PREFIX Minute
-    platform: template
-    lambda: return id(gps_time).now().minute;
-    accuracy_decimals: 0
-    unit_of_measurement: m
-    icon: mdi:clock
-    state_topic: time/minute
-    retain: false
-    update_interval: never
-
   # https://esphome.io/components/sun.html
   - id: sun_elevation_sensor
     name: $PREFIX Sun Elevation
     platform: sun
     type: elevation
+    accuracy_decimals: 0
     state_topic: time/sun/elevation
-    retain: false
     update_interval: never
 
   - id: hdop_sensor
@@ -137,6 +115,10 @@ sensor:
     state_topic: location/hdop
     unit_of_measurement: dop
     icon: mdi:signal-distance-variant
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
 
   - id: satellite_sensor
     name: $PREFIX Sats
@@ -146,6 +128,10 @@ sensor:
     state_topic: location/sats
     unit_of_measurement: x
     icon: mdi:satellite-variant
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
 
   - id: lat_sensor
     name: $PREFIX Lat
@@ -185,16 +171,27 @@ sensor:
     name: $PREFIX Alt
     platform: template
     lambda: return id(gps_module).get_tiny_gps().altitude.meters();
-    accuracy_decimals: 2
+    accuracy_decimals: 0
     state_topic: location/alt
     unit_of_measurement: m
     icon: mdi:elevation-rise
+    filters:
+      - filter_out: 0.0
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
 
 binary_sensor:
   - id: valid_time_sensor
-    name: $PREFIX Valid
+    name: $PREFIX Valid Time
     platform: template
     lambda: return id(gps_time).now().is_valid();
+    retain: false
+
+  - id: valid_gps_sensor
+    name: $PREFIX GPS Fix
+    platform: template
+    lambda: return id(gps_module).get_tiny_gps().location.isValid();
     retain: false
 
 font:
@@ -219,4 +216,4 @@ display:
       it.strftime(32, 24, id(large_font), TextAlign::CENTER, "%H:%M", id(gps_time).now());
       it.strftime(64, 48, id(small_font), TextAlign::BOTTOM_RIGHT, "%S", id(gps_time).now());
       it.strftime(0, 48, id(small_font), TextAlign::BOTTOM_LEFT, "%a", id(gps_time).now());
-      // it.printf(32, 48, id(small_font), TextAlign::BOTTOM_CENTER, "%d", id(gps_module).get_tiny_gps().satellites.value());
+      it.printf(32, 48, id(small_font), TextAlign::BOTTOM_CENTER, "%s", (id(gps_module).get_tiny_gps().location.isValid() ? "o" : "x"));
