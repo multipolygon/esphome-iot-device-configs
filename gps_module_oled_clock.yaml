@@ -195,13 +195,12 @@ binary_sensor:
     retain: false
 
 font:
-  # https://www.dafont.com/andrew-tyler.d2526
   - id: small_font
-    file: 'DejaVuSansMono.ttf'
+    file: fonts/DejaVuSansMono.ttf
     size: 10
 
   - id: large_font
-    file: 'DejaVuSansMono.ttf'
+    file: fonts/DejaVuSansMono.ttf
     size: 22
 
 # https://esphome.io/components/display/index.html
@@ -216,4 +215,8 @@ display:
       it.strftime(32, 24, id(large_font), TextAlign::CENTER, "%H:%M", id(gps_time).now());
       it.strftime(64, 48, id(small_font), TextAlign::BOTTOM_RIGHT, "%S", id(gps_time).now());
       it.strftime(0, 48, id(small_font), TextAlign::BOTTOM_LEFT, "%a", id(gps_time).now());
-      it.printf(32, 48, id(small_font), TextAlign::BOTTOM_CENTER, "%s", (id(gps_module).get_tiny_gps().location.isValid() ? "o" : "x"));
+      it.printf(
+        32, 48, id(small_font), TextAlign::BOTTOM_CENTER, "%s%s",
+        (id(gps_time).now().is_valid() ? "" : "T"),
+        (id(gps_module).get_tiny_gps().location.isValid() ? "" : "X")
+      );

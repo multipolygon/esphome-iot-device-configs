@@ -1,0 +1,82 @@
+substitutions:
+  NAME: weather_oled
+  PREFIX: Weather OLED
+  WIFI_AP_SSID: ESP-WOLED
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  name: $NAME
+  platform: ESP8266
+  board: d1_mini
+  build_path: _builds/$NAME/
+  includes:
+    - weather_icon_map.h
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - id: weather_type
+    platform: mqtt_subscribe
+    topic: weather/type
+
+  - id: daytime
+    platform: mqtt_subscribe
+    topic: time/daytime
+    on_value:
+      then:
+        if:
+          condition:
+            text_sensor.state:
+              id: daytime
+              state: "ON"
+          then:
+            lambda: id(oled).set_brightness(255.0);
+          else:
+            lambda: id(oled).set_brightness(0.0);
+
+i2c:
+
+font:
+  - file: fonts/materialdesignicons-webfont.ttf
+    id: icon_font
+    size: 48
+    glyphs:
+      - "\U000F0594" # night
+      - "\U000F0590" # cloudy
+      - "\U000F0591" # fog
+      - "\U000F0592" # hail
+      - "\U000F0593" # lightning
+      - "\U000F067E" # lightning-rainy
+      - "\U000F0595" # partly-cloudy
+      - "\U000F0596" # pouring
+      - "\U000F0597" # rainy
+      - "\U000F0598" # snowy
+      - "\U000F0F35" # snowy-rainy
+      - "\U000F0599" # sunny
+      - "\U000F059D" # windy
+      - "\U000F059E" # windy-variant
+      - "\U000F0898" # hurricane
+
+display:
+  - id: oled
+    platform: ssd1306_i2c
+    model: SSD1306 64x48
+    address: 0x3C
+    lambda: |-
+      if (id(weather_type).has_state()) {
+        it.print(
+          32,
+          24,
+          id(icon_font),
+          TextAlign::CENTER,
+          weather_icon_map[id(weather_type).state.c_str()].c_str()
+        );
+      }
+
+deep_sleep:
+  run_duration: 2min
+  sleep_duration: 15min
