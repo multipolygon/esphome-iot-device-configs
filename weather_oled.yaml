@@ -19,9 +19,12 @@ esphome:
 <<: !include partial/mqtt.yaml
 
 text_sensor:
-  - id: weather_type
+  - id: weather_condition
     platform: mqtt_subscribe
-    topic: weather/type
+    topic: weather/forecast/today/condition
+    on_value:
+      then:
+        component.update: oled
 
   - id: daytime
     platform: mqtt_subscribe
@@ -45,38 +48,55 @@ font:
     id: icon_font
     size: 48
     glyphs:
-      - "\U000F0594" # night
-      - "\U000F0590" # cloudy
-      - "\U000F0591" # fog
-      - "\U000F0592" # hail
-      - "\U000F0593" # lightning
-      - "\U000F067E" # lightning-rainy
-      - "\U000F0595" # partly-cloudy
-      - "\U000F0596" # pouring
-      - "\U000F0597" # rainy
-      - "\U000F0598" # snowy
-      - "\U000F0F35" # snowy-rainy
-      - "\U000F0599" # sunny
-      - "\U000F059D" # windy
-      - "\U000F059E" # windy-variant
-      - "\U000F0898" # hurricane
+      - "\U000F0590" # weather-cloudy
+      - "\U000F0F2F" # weather-cloudy-alert
+      - "\U000F0E6E" # weather-cloudy-arrow-right
+      - "\U000F0591" # weather-fog
+      - "\U000F0592" # weather-hail
+      - "\U000F0F30" # weather-hazy
+      - "\U000F0898" # weather-hurricane
+      - "\U000F0593" # weather-lightning
+      - "\U000F067E" # weather-lightning-rainy
+      - "\U000F0594" # weather-night
+      - "\U000F0F31" # weather-night-partly-cloudy
+      - "\U000F0595" # weather-partly-cloudy
+      - "\U000F0F32" # weather-partly-lightning
+      - "\U000F0F33" # weather-partly-rainy
+      - "\U000F0F34" # weather-partly-snowy
+      - "\U000F0F35" # weather-partly-snowy-rainy
+      - "\U000F0596" # weather-pouring
+      - "\U000F0597" # weather-rainy
+      - "\U000F0598" # weather-snowy
+      - "\U000F0F36" # weather-snowy-heavy
+      - "\U000F067F" # weather-snowy-rainy
+      - "\U000F0599" # weather-sunny
+      - "\U000F0F37" # weather-sunny-alert
+      - "\U000F14E4" # weather-sunny-off
+      - "\U000F059A" # weather-sunset
+      - "\U000F059B" # weather-sunset-down
+      - "\U000F059C" # weather-sunset-up
+      - "\U000F0F38" # weather-tornado
+      - "\U000F059D" # weather-windy
+      - "\U000F059E" # weather-windy-variant
 
 display:
   - id: oled
     platform: ssd1306_i2c
     model: SSD1306 64x48
     address: 0x3C
+    update_interval: never
+    brightness: 0.0
     lambda: |-
-      if (id(weather_type).has_state()) {
+      if (id(weather_condition).has_state()) {
         it.print(
           32,
           24,
           id(icon_font),
           TextAlign::CENTER,
-          weather_icon_map[id(weather_type).state.c_str()].c_str()
+          weather_icon_map[id(weather_condition).state.c_str()].c_str()
         );
       }
 
-deep_sleep:
-  run_duration: 2min
-  sleep_duration: 15min
+# deep_sleep:
+#   run_duration: 1min
+#   sleep_duration: 15min

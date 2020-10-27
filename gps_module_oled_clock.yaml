@@ -210,6 +210,7 @@ display:
     platform: ssd1306_i2c
     model: SSD1306 64x48
     address: 0x3C
+    brightness: 0.0
     lambda: |-
       it.strftime(32, 0, id(small_font), TextAlign::TOP_CENTER, "%e-%m-%Y", id(gps_time).now());
       it.strftime(32, 24, id(large_font), TextAlign::CENTER, "%H:%M", id(gps_time).now());

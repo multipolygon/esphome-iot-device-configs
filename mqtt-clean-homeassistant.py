@@ -10,6 +10,7 @@ from time import sleep
 def args():
     p = ArgumentParser()
     p.add_argument("--secrets", '-s', action="store", type=str, help='Transfer specified file as secrets.json')
+    p.add_argument("--topic", '-t', action="store", type=str, help='Topic to publish to.')
     return p.parse_args()
 
 args = args()
@@ -17,7 +18,7 @@ args = args()
 with open(args.secrets or 'secrets.yaml') as f:
     secrets = yaml.load(f, Loader=yaml.FullLoader)
 
-topic = '/'.join((i for i in [
+topic = args.topic if args.topic else '/'.join((i for i in [
     secrets['MQTT_PREFIX'],
     'homeassistant',
     '+',
@@ -36,7 +37,7 @@ messages = []
 def on_message(client, userdata, message):
     try:
         if message.retain:
-            messages.append([message.topic, message.payload.decode("utf-8")])
+            messages.append([message.topic.split('/'), message.payload.decode("utf-8")])
     except Exception as e:
         print(e)
 
@@ -69,10 +70,10 @@ else:
     print('Answer "s" to skip over the device.')
     print('Press [Enter] to skip with no action.')
 
-    for topic, payload in sorted(messages, key = lambda i: i[0].split('/')[3] + i[0].split('/')[4]):
-        cls = topic.split('/')[2]
-        dev = topic.split('/')[3]
-        ent = topic.split('/')[4]
+    for topic, payload in sorted(messages, key = lambda i: i[0][3] + i[0][4] if len(i[0]) > 5 else i[0]):
+        cls = topic[2] if len(topic) > 5 else '/'.join(topic)
+        dev = topic[3] if len(topic) > 5 else ''
+        ent = topic[4] if len(topic) > 5 else ''
 
         if skip_device and last_device == dev:
             pass
@@ -94,7 +95,7 @@ else:
                     break
 
                 elif answer == 'd':
-                    client.publish(topic, payload=None, retain=True)
+                    client.publish('/'.join(topic), payload=None, retain=True)
                     print('    -> DELETED ')
                     break
 
