@@ -97,6 +97,6 @@ display:
         );
       }
 
-# deep_sleep:
-#   run_duration: 1min
-#   sleep_duration: 15min
+deep_sleep:
+  run_duration: 1min
+  sleep_duration: 15min

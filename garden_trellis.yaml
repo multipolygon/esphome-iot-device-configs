@@ -131,7 +131,7 @@ binary_sensor:
     name: $PREFIX Daytime
     platform: template
     device_class: light
-    lambda: return id(lux_sensor).state > 1000;
+    lambda: return id(lux_sensor).state > 100;
     filters:
       - delayed_on: 10min
       - delayed_off: 1h

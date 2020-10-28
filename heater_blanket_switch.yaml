@@ -13,60 +13,35 @@ esphome:
   comment: Sonoff S26 No. 2
   build_path: _builds/$NAME/
 
-globals:
-  - id: daytime
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
 <<: !include partial/wifi.yaml
-
-# https://esphome.io/components/mqtt.html
-mqtt:
-  id: mqtt_client
-  broker: !secret MQTT_BROKER
-  username: !secret MQTT_USERNAME
-  password: !secret MQTT_PASSWORD
-  discovery_prefix: $MQTT_PREFIX/homeassistant
-  topic_prefix: $MQTT_PREFIX/$NAME
-  reboot_timeout: $REBOOT_TIMEOUT
-  # https://esphome.io/components/mqtt.html#on-message-trigger
-  on_message:
-    - topic: time/daytime
-      payload: "ON"
-      then:
-        lambda: id(daytime) = true;
-    - topic: time/daytime
-      payload: "OFF"
-      then:
-        lambda: id(daytime) = false;
+<<: !include partial/mqtt.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: time/daytime
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
-status_led:
-  pin: GPIO13
-
 binary_sensor:
   - id: daytime_sensor
-    name: $PREFIX Daytime
     platform: template
-    lambda: return id(daytime);
+    lambda: return id(daytime_text_sensor).state.compare("ON") == 0;
     filters:
       - delayed_on: 2h
       - delayed_off: 2h
     on_press:
       then:
-        switch.turn_on: relay_switch
+        switch.turn_off: relay_switch
     on_release:
       then:
-        switch.turn_off: relay_switch
+        switch.turn_on: relay_switch
 
-  - name: $PREFIX Button
+  - id: button_binary_sensor
     platform: gpio
     pin:
       number: GPIO0
@@ -82,3 +57,23 @@ switch:
     platform: gpio
     pin: GPIO12
     restore_mode: ALWAYS_OFF
+    on_turn_on:
+      light.turn_off: led_light
+    on_turn_off:
+      light.turn_on:
+        id: led_light
+        brightness: 50%
+
+output:
+  - platform: esp8266_pwm
+    id: led_output
+    pin:
+      number: GPIO13
+      inverted: true
+
+light:
+  # https://esphome.io/components/light/monochromatic.html
+  - id: led_light
+    platform: monochromatic
+    output: led_output
+    restore_mode: ALWAYS_ON
