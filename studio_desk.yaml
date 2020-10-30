@@ -1,15 +1,15 @@
 substitutions:
-  NAME: kitchen_grow_light
-  PREFIX: Kitchen Grow Light
-  WIFI_AP_SSID: ESP-KGL
-  REBOOT_TIMEOUT: 120min
+  NAME: studio_desk
+  PREFIX: Studio Desk
+  WIFI_AP_SSID: ESP-SD
+  REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
 
 esphome:
-  <<: !include partial/esphome_sonoff_s26.yaml
-  comment: Sonoff S26 No. 3
+  <<: !include partial/esphome_d1_mini.yaml
 
+<<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 
@@ -30,49 +30,34 @@ binary_sensor:
     lambda: return id(daytime_text_sensor).state.compare("ON") == 0;
     on_press:
       then:
-        light.turn_on: relay_light
+        light.turn_off: underside_light
     on_release:
       then:
-        light.turn_off: relay_light
+        light.turn_on:
+          id: underside_light
+          brightness: 50%
 
   - id: button_binary_sensor
     platform: gpio
     pin:
-      number: GPIO0
-      mode: INPUT_PULLUP
-      inverted: True
+      number: D3
+      mode: INPUT
+      inverted: true
     filters:
       delayed_on: 100ms
     on_press:
       then:
-        light.toggle: relay_light
+        light.toggle: underside_light
 
 output:
   - platform: esp8266_pwm
-    id: led_output
-    pin:
-      number: GPIO13
-      inverted: true
-
-  - id: relay_output
-    platform: gpio
-    pin: GPIO12
+    id: d1_output
+    pin: D1
 
 light:
   # https://esphome.io/components/light/monochromatic.html
-  - id: led_light
+  - id: underside_light
+    name: $PREFIX Underside Light
     platform: monochromatic
-    output: led_output
-    restore_mode: ALWAYS_ON
-
-  - id: relay_light
-    name: $PREFIX
-    platform: binary
-    output: relay_output
+    output: d1_output
     restore_mode: ALWAYS_OFF
-    on_turn_on:
-      light.turn_off: led_light
-    on_turn_off:
-      light.turn_on:
-        id: led_light
-        brightness: 50%

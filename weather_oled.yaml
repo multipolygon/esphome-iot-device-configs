@@ -7,10 +7,7 @@ substitutions:
   MQTT_PREFIX: !secret MQTT_PREFIX
 
 esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini
-  build_path: _builds/$NAME/
+  <<: !include partial/esphome_d1_mini.yaml
   includes:
     - weather_icon_map.h
 
@@ -26,20 +23,20 @@ text_sensor:
       then:
         component.update: oled
 
-  - id: daytime
+  - id: daytime_text_sensor
     platform: mqtt_subscribe
     topic: time/daytime
-    on_value:
+
+binary_sensor:
+  - id: daytime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state.compare("ON") == 0;
+    on_press:
       then:
-        if:
-          condition:
-            text_sensor.state:
-              id: daytime
-              state: "ON"
-          then:
-            lambda: id(oled).set_brightness(255.0);
-          else:
-            lambda: id(oled).set_brightness(0.0);
+        lambda: id(oled).set_brightness(255.0);
+    on_release:
+      then:
+        lambda: id(oled).set_brightness(0.0);
 
 i2c:
 

@@ -1,0 +1,47 @@
+substitutions:
+  NAME: kitchen_shelf
+  PREFIX: Kitchen Shelf
+  WIFI_AP_SSID: ESP-KS
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: bright_light
+    platform: mqtt_subscribe
+    topic: scene/living_room/bright_light
+    on_value:
+      then:
+        light.turn_on: relay_light
+
+  - id: low_light
+    platform: mqtt_subscribe
+    topic: scene/living_room/low_light
+    on_value:
+      then:
+        light.turn_off: relay_light
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+output:
+  - id: relay_output
+    platform: gpio
+    pin: D1
+
+light:
+  - id: relay_light
+    name: $PREFIX Light
+    platform: binary
+    output: relay_output
+    restore_mode: ALWAYS_OFF

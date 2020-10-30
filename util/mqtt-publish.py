@@ -6,7 +6,7 @@ def args():
     p = ArgumentParser()
     p.add_argument("--secrets", '-s', action="store", type=str, help='Transfer specified file as secrets.json')
     p.add_argument("--topic", '-t', action="store", type=str, help='Topic to publish to.')
-    p.add_argument("--message", '-m', action="store", type=str, help='Message.')
+    p.add_argument("--message", '-m', '-p', action="store", type=str, help='Message.')
     p.add_argument("--retain", '-r', action="store_true", help='Set retained flag on published message.')
     return p.parse_args()
 

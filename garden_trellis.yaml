@@ -19,10 +19,7 @@ substitutions:
   HOT_WEATHER_TIMER: "60"
 
 esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini
-  build_path: _builds/$NAME/
+  <<: !include partial/esphome_d1_mini.yaml
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -81,15 +78,20 @@ sensor:
         window_size: 10
         send_every: 10
 
-  - id: pump_time_sensor
+  - &pump_time_sensor
+    id: pump_time_sensor
     name: $PREFIX Pump Time
     platform: template
     unit_of_measurement: "s"
     icon: mdi:progress-clock
     accuracy_decimals: 0
     lambda: return id(pump_time);
-    retain: true
+    retain: false
     update_interval: never
+
+  - <<: *pump_time_sensor
+    id: pump_time_sensor_daily
+    name: $PREFIX Pump Time Daily
 
 # https://esphome.io/components/switch/index.html
 switch:
@@ -131,13 +133,12 @@ binary_sensor:
     name: $PREFIX Daytime
     platform: template
     device_class: light
-    lambda: return id(lux_sensor).state > 100;
-    filters:
-      - delayed_on: 10min
-      - delayed_off: 1h
+    lambda: return id(lux_sensor).state > 100.0;
     on_release:
       then:
-        lambda: id(pump_time) = 0;
+        - component.update: pump_time_sensor_daily
+        - lambda: id(pump_time) = 0;
+        - component.update: pump_time_sensor
 
   # https://esphome.io/components/binary_sensor/template.html
   - platform: template
@@ -181,15 +182,22 @@ script:
             - delay: ${WARM_WEATHER_TIMER}s
       - switch.turn_off: pump_switch
 
-# https://esphome.io/guides/automations.html#interval
-interval:
-  - interval: 120min
-    then:
-      if:
-        condition:
-          binary_sensor.is_on: active_binary_sensor
+# https://esphome.io/components/time.html#sntp-configuration
+time:
+  - id: ntp_time
+    platform: sntp
+    servers:
+      - !secret MQTT_BROKER
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: /2
         then:
-          - output.turn_on: activated_led
-          - switch.turn_on: pump_switch
-        else:
-          output.turn_off: activated_led
+          if:
+            condition:
+              binary_sensor.is_on: active_binary_sensor
+            then:
+              - output.turn_on: activated_led
+              - switch.turn_on: pump_switch
+            else:
+              output.turn_off: activated_led

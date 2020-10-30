@@ -8,10 +8,7 @@ substitutions:
   UPDATE_INTERVAL: 10min
 
 esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini
-  build_path: _builds/$NAME/
+  <<: !include partial/esphome_d1_mini.yaml
 
 globals:
   - id: battery_min
@@ -23,25 +20,7 @@ globals:
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
-
-# https://esphome.io/components/mqtt.html
-mqtt:
-  id: mqtt_client
-  broker: !secret MQTT_BROKER
-  username: !secret MQTT_USERNAME
-  password: !secret MQTT_PASSWORD
-  discovery_prefix: $MQTT_PREFIX/homeassistant
-  topic_prefix: $MQTT_PREFIX/$NAME
-  reboot_timeout: $REBOOT_TIMEOUT
-  # https://esphome.io/components/mqtt.html#on-message-trigger
-  on_message:
-    topic: time/hour
-    payload: "0"
-    then:
-      - component.update: battery_min_sensor
-      - component.update: battery_max_sensor
-      - lambda: id(battery_min) = id(battery).state;
-      - lambda: id(battery_max) = id(battery).state;
+<<: !include partial/mqtt.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -114,6 +93,17 @@ sensor:
         sliding_window_moving_average:
           window_size: 10
           send_every: 10
+
+  - id: hour_sensor
+    platform: mqtt_subscribe
+    topic: time/hour
+    on_value_range:
+      below: 1 # hour zero => midnight
+      then:
+        - component.update: battery_min_sensor
+        - component.update: battery_max_sensor
+        - lambda: id(battery_min) = id(battery).state;
+        - lambda: id(battery_max) = id(battery).state;
 
 output:
   - id: d5

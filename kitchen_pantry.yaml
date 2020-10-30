@@ -1,0 +1,69 @@
+substitutions:
+  NAME: kitchen_pantry
+  PREFIX: Kitchen Pantry
+  WIFI_AP_SSID: ESP-KP
+  REBOOT_TIMEOUT: 60min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: bright_light
+    platform: mqtt_subscribe
+    topic: scene/living_room/bright_light
+    on_value:
+      then:
+        light.turn_on: relay_light
+
+  - id: low_light
+    platform: mqtt_subscribe
+    topic: scene/living_room/low_light
+    on_value:
+      then:
+        light.turn_off: relay_light
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+binary_sensor:
+  - id: pir_binary_sensor
+    name: $PREFIX Motion
+    device_class: motion
+    platform: gpio
+    pin:
+      number: D3
+      mode: INPUT
+    on_press:
+      then:
+        light.turn_on: relay_light
+
+output:
+  - id: relay_output
+    platform: gpio
+    pin: D1
+
+light:
+  - id: relay_light
+    name: $PREFIX Light
+    platform: binary
+    output: relay_output
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      then:
+        script.execute: relay_light_timer_script
+
+script:
+  - id: relay_light_timer_script
+    mode: restart
+    then:
+      - delay: 15min
+      - light.turn_off: relay_light
