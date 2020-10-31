@@ -130,7 +130,7 @@ binary_sensor:
     device_class: moisture
     retain: false
     filters:
-      - delayed_on_off: 1min
+      - delayed_on_off: 5s
     on_release:
       then:
         mqtt.publish:
