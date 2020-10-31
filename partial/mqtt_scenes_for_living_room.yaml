@@ -1,0 +1,30 @@
+- id: living_room_scene_mqtt_text_sensor
+  platform: mqtt_subscribe
+  topic: scene/living_room
+  qos: 1 # at least once
+  on_value:
+    then:
+      - logger.log:
+          level: INFO
+          format: "MQTT scene/living_room: %s"
+          args: ['x.c_str()']
+      - if:
+          condition:
+            lambda: return x == "BRIGHT_LIGHT";
+          then:
+            script.execute: scene_living_room_bright_light
+      - if:
+          condition:
+            lambda: return x == "LOW_LIGHT";
+          then:
+            script.execute: scene_living_room_low_light
+      - if:
+          condition:
+            lambda: return x == "NIGHT_LIGHT";
+          then:
+            script.execute: scene_living_room_night_light
+      - if:
+          condition:
+            lambda: return x == "ALL_LIGHTS_OFF";
+          then:
+            script.execute: scene_living_room_all_lights_off

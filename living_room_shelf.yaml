@@ -15,20 +15,7 @@ esphome:
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
-
-  - id: bright_light
-    platform: mqtt_subscribe
-    topic: scene/living_room/bright_light
-    on_value:
-      then:
-        light.turn_on: relay_light
-
-  - id: low_light
-    platform: mqtt_subscribe
-    topic: scene/living_room/low_light
-    on_value:
-      then:
-        light.turn_off: relay_light
+  - <<: !include partial/mqtt_scenes_for_living_room.yaml
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -45,3 +32,20 @@ light:
     platform: binary
     output: relay_output
     restore_mode: ALWAYS_OFF
+
+script:
+  - id: scene_living_room_bright_light
+    then:
+      light.turn_on: relay_light
+
+  - id: scene_living_room_low_light
+    then:
+      light.turn_off: relay_light
+
+  - id: scene_living_room_night_light
+    then:
+      light.turn_off: relay_light
+
+  - id: scene_living_room_all_lights_off
+    then:
+      light.turn_off: relay_light

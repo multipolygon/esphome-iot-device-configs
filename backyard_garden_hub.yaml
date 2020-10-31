@@ -14,9 +14,11 @@ globals:
   - id: battery_min
     type: float
     initial_value: "100"
+    restore_value: yes
   - id: battery_max
     type: float
     initial_value: "-100"
+    restore_value: yes
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml

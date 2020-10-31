@@ -28,6 +28,7 @@ esphome:
 globals:
   - id: pump_time
     type: int
+    restore_value: yes
   - id: temp
     type: int
 
@@ -128,6 +129,13 @@ binary_sensor:
     name: $PREFIX Water Tank
     device_class: moisture
     retain: false
+    filters:
+      - delayed_on_off: 1min
+    on_release:
+      then:
+        mqtt.publish:
+          topic: notify/maintenance
+          payload: $PREFIX Water Tank low!
 
   - id: daytime_sensor
     name: $PREFIX Daytime

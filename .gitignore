@@ -9,6 +9,7 @@
 **/platformio.ini
 **/partitions.csv
 /secrets.yaml
+/secrets*.yaml
 .DS_Store
 .builds
 /_*

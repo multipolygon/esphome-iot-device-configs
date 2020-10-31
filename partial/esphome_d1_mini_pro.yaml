@@ -1,0 +1,3 @@
+<<: !include ./esphome.yaml
+platform: ESP8266
+board: d1_mini_pro
