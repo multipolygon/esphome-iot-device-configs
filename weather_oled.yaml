@@ -19,9 +19,6 @@ text_sensor:
   - id: weather_condition
     platform: mqtt_subscribe
     topic: weather/forecast/today/condition
-    on_value:
-      then:
-        component.update: oled
 
   - id: daytime_text_sensor
     platform: mqtt_subscribe
@@ -30,7 +27,7 @@ text_sensor:
 binary_sensor:
   - id: daytime_sensor
     platform: template
-    lambda: return id(daytime_text_sensor).state.compare("ON") == 0;
+    lambda: return id(daytime_text_sensor).state == "ON";
     on_press:
       then:
         lambda: id(oled).set_brightness(255.0);
@@ -81,10 +78,9 @@ display:
     platform: ssd1306_i2c
     model: SSD1306 64x48
     address: 0x3C
-    update_interval: never
     brightness: 0.0
     lambda: |-
-      if (id(weather_condition).has_state()) {
+      if (id(weather_condition).has_state() && id(daytime_text_sensor).has_state() && id(daytime_text_sensor).state == "ON") {
         it.print(
           32,
           24,

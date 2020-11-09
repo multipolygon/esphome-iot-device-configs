@@ -1,19 +1,46 @@
 substitutions:
+  <<: !include secrets_rc.yaml
   NAME: rc_dam_water_level_alarm
   PREFIX: Dam Water Level
-  WIFI_AP_SSID: ESP-$NAME
+  WIFI_AP_SSID: ESP-RC-DWLA
   REBOOT_TIMEOUT: 0s
-  LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
+  LOG_LEVEL: DEBUG
 
 esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini_pro
-  build_path: _builds/$NAME/
+  <<: !include partial/esphome_d1_mini_pro.yaml
+  esp8266_restore_from_flash: true # for the mute switch
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
+
+logger:
+  level: $LOG_LEVEL
+
+wifi:
+  id: wifi_id
+  networks:
+    - ssid: $WIFI_SSID
+      password: $WIFI_PASSWORD
+    - ssid: $WIFI_SSID_EXT
+      password: $WIFI_PASSWORD
+  reboot_timeout: $REBOOT_TIMEOUT
+  ap:
+    ssid: $WIFI_AP_SSID
+    password: $WIFI_AP_PASSWORD
+
+captive_portal:
+
+ota:
+  password: $OTA_PASSWORD
+
+# mqtt:
+#   id: mqtt_client
+#   broker: $MQTT_BROKER
+#   username: $MQTT_USERNAME
+#   password: $MQTT_PASSWORD
+#   discovery_prefix: $MQTT_PREFIX/homeassistant
+#   topic_prefix: $MQTT_PREFIX/$NAME
+#   reboot_timeout: $REBOOT_TIMEOUT
+
 <<: !include partial/mqtt.yaml
 
 text_sensor:
@@ -23,31 +50,47 @@ sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
-# https://esphome.io/components/switch/index.html
 switch:
   - platform: shutdown
     name: $PREFIX Shutdown
 
+  - id: mute_switch
+    name: $PREFIX Mute
+    platform: gpio
+    pin: D8
+    retain: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      then:
+        - script.stop: audible_alert
+        - output.turn_off: audible_output
+    on_turn_off:
+      then:
+        script.execute: audible_alert
+
 output:
   - platform: gpio
     id: led_output
-    pin: GPIO0 # LED
+    pin: D3
 
   - platform: gpio
     id: audible_output
     pin:
-      number: GPIO5
+      number: D1
       mode: OUTPUT_OPEN_DRAIN
       inverted: true
 
 script:
   - id: audible_alert
     then:
-      - output.turn_on: audible_output
-      - delay: 1min
-      - output.turn_off: audible_output
+      if:
+        condition:
+          switch.is_off: mute_switch
+        then:
+          - output.turn_on: audible_output
+          - delay: 1min
+          - output.turn_off: audible_output
 
-# https://esphome.io/guides/automations.html#interval
 interval:
   - interval: 2s
     then:
@@ -57,16 +100,16 @@ interval:
 
   - interval: 2min
     then:
-      - if:
-          condition:
-            lambda: return id(uptime_sensor).state < 600;
-          then:
-            - script.execute: audible_alert
+      if:
+        condition:
+          lambda: return id(uptime_sensor).state < 600;
+        then:
+          script.execute: audible_alert
 
   - interval: 10min
     then:
-      - script.execute: audible_alert
+      script.execute: audible_alert
 
 deep_sleep:
   run_duration: 60min
-  sleep_duration: 60min
+  sleep_duration: 120min

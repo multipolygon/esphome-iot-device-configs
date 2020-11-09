@@ -1,2 +1,2 @@
 name: $NAME
-build_path: ~/tmp/esphome/$NAME/
+build_path: /tmp/esphome/$NAME/

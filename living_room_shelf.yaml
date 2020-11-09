@@ -40,7 +40,7 @@ script:
 
   - id: scene_living_room_low_light
     then:
-      light.turn_off: relay_light
+      light.turn_on: relay_light
 
   - id: scene_living_room_night_light
     then:
