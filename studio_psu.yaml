@@ -93,6 +93,9 @@ interval:
             - switch.turn_on: fan_high
             - switch.turn_on: fan_medium
             - switch.turn_on: fan_low
+            - mqtt.publish:
+                topic: notify/critical
+                payload: $PREFIX Over 50°C!
       - if:
           condition:
             sensor.in_range:
@@ -103,6 +106,9 @@ interval:
             - switch.turn_on: fan_high
             - switch.turn_off: fan_medium
             - switch.turn_off: fan_low
+            - mqtt.publish:
+                topic: notify/warning
+                payload: $PREFIX Over 40°C!
       - if:
           condition:
             sensor.in_range:
