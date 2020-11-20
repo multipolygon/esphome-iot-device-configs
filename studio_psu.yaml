@@ -1,0 +1,120 @@
+substitutions:
+  NAME: studio_psu
+  PREFIX: Studio PSU
+  WIFI_AP_SSID: ESP-SPSU
+  REBOOT_TIMEOUT: 180min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+  POLL_INTERVAL: 10sec
+  POST_INTERVAL: 1min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+globals:
+  - id: fan_level
+    type: int
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+i2c:
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - platform: sht3xd
+    address: 0x45
+    update_interval: $POLL_INTERVAL
+    temperature:
+      id: temp_sensor
+    humidity:
+      id: humid_sensor 
+
+  - name: $PREFIX Temperature
+    platform: template
+    lambda: return id(temp_sensor).state;
+    update_interval: $POST_INTERVAL
+    accuracy_decimals: 0
+    unit_of_measurement: °C
+
+  - name: $PREFIX Fan Level
+    platform: template
+    lambda: return id(fan_level);
+    update_interval: $POST_INTERVAL
+    accuracy_decimals: 0
+    unit_of_measurement: speed
+
+switch:
+  - id: power_switch
+    name: $PREFIX Power
+    platform: gpio
+    pin: D3
+    restore_mode: ALWAYS_ON
+    inverted: yes
+    on_turn_on:
+      then:
+        switch.turn_on: fan_high
+
+  # 3.9k
+  - id: fan_high
+    platform: gpio
+    pin: D5
+    restore_mode: ALWAYS_ON
+
+  # 4.7k
+  - id: fan_medium
+    platform: gpio
+    pin: D6
+    restore_mode: ALWAYS_ON
+
+  # 5.6k
+  - id: fan_low
+    platform: gpio
+    pin: D7
+    restore_mode: ALWAYS_ON
+
+interval:
+  - interval: $POLL_INTERVAL
+    then:
+      - if:
+          condition:
+            sensor.in_range:
+              id: temp_sensor
+              above: 50
+          then:
+            - lambda: id(fan_level) = 0;
+            - switch.turn_off: power_switch
+            - switch.turn_on: fan_high
+            - switch.turn_on: fan_medium
+            - switch.turn_on: fan_low
+      - if:
+          condition:
+            sensor.in_range:
+              id: temp_sensor
+              above: 40
+          then:
+            - lambda: id(fan_level) = 3;
+            - switch.turn_on: fan_high
+            - switch.turn_off: fan_medium
+            - switch.turn_off: fan_low
+      - if:
+          condition:
+            sensor.in_range:
+              id: temp_sensor
+              above: 30
+          then:
+            - lambda: id(fan_level) = 2;
+            - switch.turn_off: fan_high
+            - switch.turn_on: fan_medium
+            - switch.turn_off: fan_low
+          else:
+            - lambda: id(fan_level) = 1;
+            - switch.turn_off: fan_high
+            - switch.turn_off: fan_medium
+            - switch.turn_on: fan_low

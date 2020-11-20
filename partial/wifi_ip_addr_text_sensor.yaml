@@ -2,3 +2,5 @@
 platform: wifi_info
 ip_address:
   name: $PREFIX Addr
+ssid:
+  name: $PREFIX SSID

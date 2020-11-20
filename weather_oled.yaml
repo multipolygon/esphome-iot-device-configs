@@ -11,7 +11,6 @@ esphome:
   includes:
     - weather_icon_map.h
 
-<<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 

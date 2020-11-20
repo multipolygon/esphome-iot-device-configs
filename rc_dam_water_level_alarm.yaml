@@ -4,11 +4,10 @@ substitutions:
   PREFIX: Dam Water Level
   WIFI_AP_SSID: ESP-RC-DWLA
   REBOOT_TIMEOUT: 0s
-  LOG_LEVEL: DEBUG
+  LOG_LEVEL: INFO
 
 esphome:
   <<: !include partial/esphome_d1_mini_pro.yaml
-  esp8266_restore_from_flash: true # for the mute switch
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 
@@ -32,16 +31,14 @@ captive_portal:
 ota:
   password: $OTA_PASSWORD
 
-# mqtt:
-#   id: mqtt_client
-#   broker: $MQTT_BROKER
-#   username: $MQTT_USERNAME
-#   password: $MQTT_PASSWORD
-#   discovery_prefix: $MQTT_PREFIX/homeassistant
-#   topic_prefix: $MQTT_PREFIX/$NAME
-#   reboot_timeout: $REBOOT_TIMEOUT
-
-<<: !include partial/mqtt.yaml
+mqtt:
+  id: mqtt_client
+  broker: $MQTT_BROKER
+  username: $MQTT_USERNAME
+  password: $MQTT_PASSWORD
+  discovery_prefix: $MQTT_PREFIX/homeassistant
+  topic_prefix: $MQTT_PREFIX/$NAME
+  reboot_timeout: $REBOOT_TIMEOUT
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -50,23 +47,13 @@ sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
+binary_sensor:
+  - platform: status
+    name: $PREFIX Status
+
 switch:
   - platform: shutdown
     name: $PREFIX Shutdown
-
-  - id: mute_switch
-    name: $PREFIX Mute
-    platform: gpio
-    pin: D8
-    retain: true
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      then:
-        - script.stop: audible_alert
-        - output.turn_off: audible_output
-    on_turn_off:
-      then:
-        script.execute: audible_alert
 
 output:
   - platform: gpio
@@ -83,13 +70,9 @@ output:
 script:
   - id: audible_alert
     then:
-      if:
-        condition:
-          switch.is_off: mute_switch
-        then:
-          - output.turn_on: audible_output
-          - delay: 1min
-          - output.turn_off: audible_output
+      - output.turn_on: audible_output
+      - delay: 1min
+      - output.turn_off: audible_output
 
 interval:
   - interval: 2s
