@@ -50,6 +50,54 @@ sensor:
     accuracy_decimals: 0
     unit_of_measurement: speed
 
+binary_sensor:
+  - platform: template
+    name: $PREFIX Temperature Critical
+    lambda: return id(temp_sensor).state >= 50;
+    on_press:
+      then:
+        - lambda: id(fan_level) = 0;
+        - switch.turn_off: power_switch
+        - switch.turn_on: fan_high
+        - switch.turn_on: fan_medium
+        - switch.turn_on: fan_low
+        - mqtt.publish:
+            topic: notify/critical
+            payload: $PREFIX Over 50°C!
+
+  - platform: template
+    name: $PREFIX Temperature Warning
+    lambda: return id(temp_sensor).state >= 40 && id(temp_sensor).state < 50;
+    on_press:
+      then:
+        - lambda: id(fan_level) = 3;
+        - switch.turn_on: fan_high
+        - switch.turn_off: fan_medium
+        - switch.turn_off: fan_low
+        - mqtt.publish:
+            topic: notify/warning
+            payload: $PREFIX Over 40°C!
+
+  - platform: template
+    name: $PREFIX Temperature High
+    lambda: return id(temp_sensor).state >= 30 && id(temp_sensor).state < 40;
+    on_press:
+      then:
+        - lambda: id(fan_level) = 2;
+        - switch.turn_off: fan_high
+        - switch.turn_on: fan_medium
+        - switch.turn_off: fan_low
+
+  - platform: template
+    name: $PREFIX Temperature Normal
+    lambda: return id(temp_sensor).state < 30;
+    on_press:
+      then: 
+        - lambda: id(fan_level) = 1;
+        - switch.turn_off: fan_high
+        - switch.turn_off: fan_medium
+        - switch.turn_on: fan_low
+
 switch:
   - id: power_switch
     name: $PREFIX Power
@@ -78,49 +126,3 @@ switch:
     platform: gpio
     pin: D7
     restore_mode: ALWAYS_ON
-
-interval:
-  - interval: $POLL_INTERVAL
-    then:
-      - if:
-          condition:
-            sensor.in_range:
-              id: temp_sensor
-              above: 50
-          then:
-            - lambda: id(fan_level) = 0;
-            - switch.turn_off: power_switch
-            - switch.turn_on: fan_high
-            - switch.turn_on: fan_medium
-            - switch.turn_on: fan_low
-            - mqtt.publish:
-                topic: notify/critical
-                payload: $PREFIX Over 50°C!
-      - if:
-          condition:
-            sensor.in_range:
-              id: temp_sensor
-              above: 40
-          then:
-            - lambda: id(fan_level) = 3;
-            - switch.turn_on: fan_high
-            - switch.turn_off: fan_medium
-            - switch.turn_off: fan_low
-            - mqtt.publish:
-                topic: notify/warning
-                payload: $PREFIX Over 40°C!
-      - if:
-          condition:
-            sensor.in_range:
-              id: temp_sensor
-              above: 30
-          then:
-            - lambda: id(fan_level) = 2;
-            - switch.turn_off: fan_high
-            - switch.turn_on: fan_medium
-            - switch.turn_off: fan_low
-          else:
-            - lambda: id(fan_level) = 1;
-            - switch.turn_off: fan_high
-            - switch.turn_off: fan_medium
-            - switch.turn_on: fan_low
