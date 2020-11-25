@@ -28,14 +28,15 @@ sensor:
     platform: mqtt_subscribe
     topic: time/hour
     on_value_range:
-      below: 1 # hour zero => midnight
+      above: 1
+      below: 2
       then:
         light.turn_off: relay_light
 
 binary_sensor:
   - id: daytime_sensor
     platform: template
-    lambda: return not id(daytime_text_sensor).has_state() || id(daytime_text_sensor).state.compare("ON") == 0;
+    lambda: return id(daytime_text_sensor).state == "ON";
     on_press:
       then:
         light.turn_off: relay_light

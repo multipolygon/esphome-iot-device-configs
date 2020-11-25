@@ -26,8 +26,26 @@ globals:
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+  - <<: !include partial/mqtt_scenes_for_living_room.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: time/daytime
 
 i2c:
+
+binary_sensor:
+  - id: daytime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state == "ON";
+    on_press:
+      then:
+        - light.turn_off: garden_lights
+        - light.turn_off: fernery_lights
+    on_release:
+      then:
+        - light.turn_on: garden_lights
+        - light.turn_on: fernery_lights
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -100,8 +118,11 @@ sensor:
     platform: mqtt_subscribe
     topic: time/hour
     on_value_range:
-      below: 1 # hour zero => midnight
+      above: 1
+      below: 2
       then:
+        - light.turn_off: garden_lights
+        - light.turn_off: fernery_lights
         - component.update: battery_min_sensor
         - component.update: battery_max_sensor
         - lambda: id(battery_min) = id(battery).state;
@@ -118,11 +139,13 @@ output:
 
 light:
   - platform: binary
+    id: garden_lights
     name: Backyard Garden Lights
     output: d5
     restore_mode: ALWAYS_OFF
 
   - platform: binary
+    id: fernery_lights
     name: Backyard Fernery Lights
     output: d6
     restore_mode: ALWAYS_OFF
@@ -137,3 +160,18 @@ interval:
         if (id(battery).state > id(battery_max)) {
           id(battery_max) = id(battery).state;
         }
+
+script:
+  - id: scene_living_room_bright_light
+    then:
+
+  - id: scene_living_room_low_light
+    then:
+
+  - id: scene_living_room_night_light
+    then:
+      light.turn_off: garden_lights
+
+  - id: scene_living_room_all_lights_off
+    then:
+      light.turn_off: garden_lights

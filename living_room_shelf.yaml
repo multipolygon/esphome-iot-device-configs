@@ -1,7 +1,7 @@
 substitutions:
   NAME: living_room_shelf
   PREFIX: Living Room Shelf
-  WIFI_AP_SSID: ESP-KP
+  WIFI_AP_SSID: ESP-LRSH
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX

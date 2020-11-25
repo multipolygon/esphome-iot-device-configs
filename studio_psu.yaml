@@ -84,9 +84,14 @@ binary_sensor:
     on_press:
       then:
         - lambda: id(fan_level) = 2;
+        - switch.turn_on: fan_high
+        - delay: 3s
         - switch.turn_off: fan_high
         - switch.turn_on: fan_medium
         - switch.turn_off: fan_low
+        - mqtt.publish:
+            topic: notify/maintenance
+            payload: $PREFIX Fan level 2
 
   - platform: template
     name: $PREFIX Temperature Normal
@@ -94,9 +99,14 @@ binary_sensor:
     on_press:
       then: 
         - lambda: id(fan_level) = 1;
+        - switch.turn_on: fan_high
+        - delay: 3s
         - switch.turn_off: fan_high
         - switch.turn_off: fan_medium
         - switch.turn_on: fan_low
+        - mqtt.publish:
+            topic: notify/maintenance
+            payload: $PREFIX Fan level 1
 
 switch:
   - id: power_switch
@@ -111,18 +121,21 @@ switch:
 
   # 3.9k
   - id: fan_high
+    name: $PREFIX Fan High
     platform: gpio
     pin: D5
     restore_mode: ALWAYS_ON
 
   # 4.7k
   - id: fan_medium
+    name: $PREFIX Fan Medium
     platform: gpio
     pin: D6
     restore_mode: ALWAYS_ON
 
   # 5.6k
   - id: fan_low
+    name: $PREFIX Fan Low
     platform: gpio
     pin: D7
     restore_mode: ALWAYS_ON
