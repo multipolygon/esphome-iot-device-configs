@@ -15,8 +15,8 @@ substitutions:
   REBOOT_TIMEOUT: 5.1h
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
-  WARM_WEATHER_TIMER: "45"
-  HOT_WEATHER_TIMER: "60"
+  WARM_WEATHER_TIMER: "90"
+  HOT_WEATHER_TIMER: "120"
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -199,7 +199,7 @@ time:
     on_time:
       - seconds: 0
         minutes: 0
-        hours: /2
+        hours: /3
         then:
           if:
             condition:

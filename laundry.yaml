@@ -1,7 +1,7 @@
 substitutions:
-  NAME: kitchen_pantry
-  PREFIX: Kitchen Pantry
-  WIFI_AP_SSID: ESP-KP
+  NAME: laundry
+  PREFIX: Laundry
+  WIFI_AP_SSID: ESP-LL
   REBOOT_TIMEOUT: 60min
   LOG_LEVEL: INFO
   MQTT_PREFIX: !secret MQTT_PREFIX
@@ -15,7 +15,6 @@ esphome:
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
-  - <<: !include partial/mqtt_scenes_for_living_room.yaml
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -31,43 +30,30 @@ binary_sensor:
       mode: INPUT
     on_press:
       then:
-        - light.turn_on: relay_light
-        - script.stop: relay_light_timer_script
+        - light.turn_on: led_light
+        - script.stop: light_timer_script
     on_release:
       then:
-        - script.execute: relay_light_timer_script
+        - script.execute: light_timer_script
 
 output:
-  - id: relay_output
+  - id: d5_output
     platform: gpio
-    pin: D1
+    pin: D5
 
 light:
-  - id: relay_light
+  - id: led_light
     name: $PREFIX Light
     platform: binary
-    output: relay_output
-    restore_mode: ALWAYS_OFF
+    output: d5_output
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      then:
+        script.execute: light_timer_script
 
 script:
-  - id: relay_light_timer_script
+  - id: light_timer_script
     mode: restart
     then:
       - delay: 15min
-      - light.turn_off: relay_light
-
-  - id: scene_living_room_bright_light
-    then:
-      light.turn_on: relay_light
-
-  - id: scene_living_room_low_light
-    then:
-      light.turn_off: relay_light
-
-  - id: scene_living_room_night_light
-    then:
-      light.turn_off: relay_light
-
-  - id: scene_living_room_all_lights_off
-    then:
-      light.turn_off: relay_light
+      - light.turn_off: led_light

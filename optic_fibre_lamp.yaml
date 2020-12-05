@@ -1,0 +1,86 @@
+substitutions:
+  NAME: optic_fibre_lamp
+  PREFIX: Optic Fibre
+  WIFI_AP_SSID: ESP-OFL
+  REBOOT_TIMEOUT: 60min
+  LOG_LEVEL: INFO
+  MQTT_PREFIX: !secret MQTT_PREFIX
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+  on_boot:
+    - delay: 1s
+    - light.turn_off: leds
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: time/daytime
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+binary_sensor:
+  - id: daytime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state == "ON";
+    on_press:
+      then:
+        light.turn_off: leds
+    on_release:
+      then: &turn_on_random_twinkle
+        light.turn_on:
+          id: leds
+          effect: Random Twinkle
+
+  - id: button
+    platform: gpio
+    pin:
+      number: D3
+      mode: INPUT
+      inverted: true
+    filters:
+      delayed_on: 100ms
+    on_press: &toggle
+      then:
+        if:
+          condition:
+            light.is_off: leds
+          then:
+            <<: *turn_on_random_twinkle
+          else:
+            light.turn_off: leds
+    on_release:
+      <<: *toggle
+
+light:
+  - platform: neopixelbus
+    variant: WS2812
+    method: ESP8266_UART1
+    type: GRB
+    pin: D4
+    num_leds: 7
+    id: leds
+    name: $PREFIX Light
+    effects:
+      - addressable_rainbow:    
+      - addressable_color_wipe:
+      - addressable_scan:
+      - addressable_twinkle:
+      - addressable_random_twinkle:
+      - addressable_fireworks:
+      - addressable_flicker:
+          name: Flicker
+      - addressable_flicker:
+          name: Flicker More
+          update_interval: 16ms
+          intensity: 50%
+
+
