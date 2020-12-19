@@ -1,10 +1,20 @@
 substitutions:
-  NAME: rc_shed_water_tank
+  <<: !include secrets_rc.yaml
+  NAME: shed_water_tank
   PREFIX: Shed Tank
   WIFI_AP_SSID: ESP-ST
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
+  #### Pins ####
+  LIGHT_SENSOR_PIN: A0
+  # I2C: D1
+  # I2C: D2
+  BUTTON_PIN: D3
+  STATUS_LED_PIN: D4
+  VALVE_PIN_1: D5
+  FLOW_SENSOR_PIN: D6
+  PUMP_PIN: D7
+  VALVE_PIN_2: D8
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -21,10 +31,8 @@ globals:
     initial_value: 'false'
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
+<<: !include partial/wifi_ext.yaml
 <<: !include partial/mqtt.yaml
-
-i2c:
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -36,18 +44,18 @@ sensor:
   - id: flow
     name: $PREFIX Flow
     platform: pulse_counter
-    pin: D6
-    update_interval: 5s
+    pin: $FLOW_SENSOR_PIN
+    update_interval: 1s
     accuracy_decimals: 0
     filters:
       sliding_window_moving_average:
-        window_size: 12
-        send_every: 12
+        window_size: 30
+        send_every: 30
 
-  - id: light
+  - id: light_sensor
     name: $PREFIX Light
     platform: adc
-    pin: A0
+    pin: $LIGHT_SENSOR_PIN
     update_interval: 1min
     filters:
       - multiply: 3.3 
@@ -55,32 +63,12 @@ sensor:
           window_size: 10
           send_every: 10
 
-  - platform: sht3xd
-    address: 0x45
-    update_interval: 1min
-    temperature:
-      id: temp
-      name: $PREFIX Temp
-      retain: false
-      filters:
-        sliding_window_moving_average:
-          window_size: 10
-          send_every: 10
-    humidity:
-      id: humid
-      name: $PREFIX Humid
-      retain: false
-      filters:
-        sliding_window_moving_average:
-          window_size: 10
-          send_every: 10    
-
 binary_sensor:
   - id: button
     name: $PREFIX Button
     platform: gpio
     pin:
-      number: D3
+      number: $BUTTON_PIN
       mode: INPUT
       inverted: true
     filters:
@@ -93,7 +81,7 @@ binary_sensor:
     name: $PREFIX Daylight
     device_class: light
     platform: template
-    lambda: return id(light).state > 1.0;
+    lambda: return id(light_sensor).state > 1.0;
     filters:
       delayed_on_off: 10min
     on_press:
@@ -104,51 +92,50 @@ binary_sensor:
           then:
             switch.turn_on: pump
 
+  - name: $PREFIX Pump Enabled
+    platform: template
+    lambda: return id(pump).state && id(flow).raw_state < 100;
+    filters:
+      delayed_on: 5s
+    on_press:
+      - logger.log:
+          level: INFO
+          format: No flow! Turning pump off!
+      - switch.turn_off: pump
+
 switch:
-  # TODO: PWM
-  - id: valve
-    name: $PREFIX Valve
+  # TIP41C
+  - id: valve_1
+    name: $PREFIX Valve 1
     platform: gpio
-    pin: D5
-    on_turn_off:
-      switch.turn_off: pump
+    pin: $VALVE_PIN_1
+
+  # TIP122
+  - id: valve_2
+    name: $PREFIX Valve 2
+    platform: gpio
+    pin: $VALVE_PIN_2
 
   - id: pump
     name: $PREFIX Pump
     platform: gpio
-    pin: D7
+    pin: $PUMP_PIN
     on_turn_on:
-      - switch.turn_on: valve
-      - script.execute: flow_watcher
       - script.execute: pump_timer
     on_turn_off:
-      - switch.turn_off: valve
-      - script.stop: flow_watcher
+      - switch.turn_off: valve_1
+      - switch.turn_off: valve_2
       - script.stop: pump_timer
-
-  - id: buzzer
-    name: $PREFIX Buzzer
-    platform: gpio
-    pin: D8
-    on_turn_on:
-      then:
-        - delay: 5s
-        - switch.turn_off: buzzer
 
 script:
   - id: pump_timer
     then:
-      - delay: 10min
-      - switch.turn_off: pump
-
-  - id: flow_watcher
-    then:
-      - delay: 10s
-      - while:
-          condition:
-            lambda: return id(flow).raw_state >= 100;
-          then:
-            delay: 10s
-      - switch.turn_on: buzzer
-      - delay: 1ms
+      - switch.turn_on: valve_1
+      - delay: 1s
+      - switch.turn_off: valve_2
+      - delay: 5min
+      - switch.turn_on: valve_2
+      - delay: 1s
+      - switch.turn_off: valve_1
+      - delay: 5min
       - switch.turn_off: pump

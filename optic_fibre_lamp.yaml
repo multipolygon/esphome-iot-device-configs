@@ -1,4 +1,5 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: optic_fibre_lamp
   PREFIX: Optic Fibre
   WIFI_AP_SSID: ESP-OFL
@@ -41,11 +42,11 @@ binary_sensor:
           effect: Random Twinkle
 
   - id: button
+    name: $PREFIX Button
     platform: gpio
     pin:
-      number: D3
-      mode: INPUT
-      inverted: true
+      number: D5
+      mode: INPUT_PULLUP
     filters:
       delayed_on: 100ms
     on_press: &toggle

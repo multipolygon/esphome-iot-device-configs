@@ -1,6 +1,6 @@
 substitutions:
   <<: !include secrets_rc.yaml
-  NAME: rc_dam_water_level_alarm
+  NAME: dam_water_level_alarm
   PREFIX: Dam Water Level
   WIFI_AP_SSID: ESP-RC-DWLA
   REBOOT_TIMEOUT: 0s
@@ -10,35 +10,8 @@ esphome:
   <<: !include partial/esphome_d1_mini_pro.yaml
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
-
-logger:
-  level: $LOG_LEVEL
-
-wifi:
-  id: wifi_id
-  networks:
-    - ssid: $WIFI_SSID
-      password: $WIFI_PASSWORD
-    - ssid: $WIFI_SSID_EXT
-      password: $WIFI_PASSWORD
-  reboot_timeout: $REBOOT_TIMEOUT
-  ap:
-    ssid: $WIFI_AP_SSID
-    password: $WIFI_AP_PASSWORD
-
-captive_portal:
-
-ota:
-  password: $OTA_PASSWORD
-
-mqtt:
-  id: mqtt_client
-  broker: $MQTT_BROKER
-  username: $MQTT_USERNAME
-  password: $MQTT_PASSWORD
-  discovery_prefix: $MQTT_PREFIX/homeassistant
-  topic_prefix: $MQTT_PREFIX/$NAME
-  reboot_timeout: $REBOOT_TIMEOUT
+<<: !include partial/wifi_ext.yaml
+<<: !include partial/mqtt.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml

@@ -24,13 +24,9 @@ https://www.home-assistant.io/components/esphome/
     D0 = RESET = WAKE_UP = 16
     D1 = SCL = 5
     D2 = SDA = 4
-    D3 = 0 # 10k Pull-up
-    D4 = LED = 2 # 10k Pull-up
+    D3 = 0 # 10k Pull-up - no low input!
+    D4 = LED = 2 # 10k Pull-up - no low input!
     D5 = SCK = 14
     D6 = MISO = 12
-    D7 = MOSI = 13
-    D8 = SS = 15 # 10k Pull-down
-
-
-
-
+    D7 = MOSI = 13 
+    D8 = SS = 15 # 10k Pull-down - no high input!
