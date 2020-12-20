@@ -2,12 +2,22 @@ substitutions:
   <<: !include secrets_rc.yaml
   NAME: dam_water_level_alarm
   PREFIX: Dam Water Level
-  WIFI_AP_SSID: ESP-RC-DWLA
+  WIFI_AP_SSID: ESP-DWLA
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO
+  ## PINS ##
+  AUDIBLE_OUTPUT_PIN: D1
+  LED_OUTPUT_PIN: D3
 
 esphome:
   <<: !include partial/esphome_d1_mini_pro.yaml
+  on_boot:
+    - wait_until:
+        mqtt.connected:
+    - mqtt.publish:
+        topic: notify/critical/$NAME/alert
+        payload: $PREFIX - Alert!
+        retain: no
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi_ext.yaml
@@ -31,12 +41,12 @@ switch:
 output:
   - platform: gpio
     id: led_output
-    pin: D3
+    pin: $LED_OUTPUT_PIN
 
   - platform: gpio
     id: audible_output
     pin:
-      number: D1
+      number: $AUDIBLE_OUTPUT_PIN
       mode: OUTPUT_OPEN_DRAIN
       inverted: true
 

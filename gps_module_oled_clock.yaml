@@ -1,10 +1,10 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: gps_module
   PREFIX: GPS Module
   WIFI_AP_SSID: ESP-BGBH
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
 
 esphome:
   name: $NAME
@@ -57,14 +57,14 @@ text_sensor:
     name: $PREFIX Sunrise
     platform: sun
     type: sunrise
-    state_topic: time/sun/sunrise
+    state_topic: info/time/sun/sunrise
     update_interval: never
 
   - id: sunset_sensor
     name: $PREFIX Sunset
     type: sunset
     platform: sun
-    state_topic: time/sun/sunset
+    state_topic: info/time/sun/sunset
     update_interval: never
 
   # https://esphome.io/components/text_sensor/template.html
@@ -74,13 +74,13 @@ text_sensor:
     lambda: |-
         if (id(sun_elevation_sensor).state > 0.0) {
           id(oled).set_brightness(255.0);
-          return {"ON"};
+          return {"YES"};
         } else {
           id(oled).set_brightness(0.0);
-          return {"OFF"};
+          return {"NO"};
         }
     icon: mdi:theme-light-dark
-    state_topic: time/daytime
+    state_topic: info/time/daytime
     update_interval: never
 
 sensor:
@@ -94,7 +94,7 @@ sensor:
     accuracy_decimals: 0
     unit_of_measurement: h
     icon: mdi:clock
-    state_topic: time/hour
+    state_topic: info/time/hour
     retain: false
     update_interval: never
 
@@ -104,7 +104,7 @@ sensor:
     platform: sun
     type: elevation
     accuracy_decimals: 0
-    state_topic: time/sun/elevation
+    state_topic: info/time/sun/elevation
     update_interval: never
 
   - id: hdop_sensor

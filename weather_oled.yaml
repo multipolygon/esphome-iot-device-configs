@@ -1,10 +1,10 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: weather_oled
   PREFIX: Weather OLED
   WIFI_AP_SSID: ESP-WOLED
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -17,16 +17,16 @@ esphome:
 text_sensor:
   - id: weather_condition
     platform: mqtt_subscribe
-    topic: weather/forecast/today/condition
+    topic: info/weather/forecast/today/condition
 
   - id: daytime_text_sensor
     platform: mqtt_subscribe
-    topic: time/daytime
+    topic: info/time/daytime
 
 binary_sensor:
   - id: daytime_sensor
     platform: template
-    lambda: return id(daytime_text_sensor).state == "ON";
+    lambda: return id(daytime_text_sensor).state == "YES";
     on_press:
       then:
         lambda: id(oled).set_brightness(255.0);
@@ -79,7 +79,7 @@ display:
     address: 0x3C
     brightness: 0.0
     lambda: |-
-      if (id(weather_condition).has_state() && id(daytime_text_sensor).has_state() && id(daytime_text_sensor).state == "ON") {
+      if (id(weather_condition).has_state() && id(daytime_text_sensor).has_state() && id(daytime_text_sensor).state == "YES") {
         it.print(
           32,
           24,

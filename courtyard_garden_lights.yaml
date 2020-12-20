@@ -1,10 +1,10 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: courtyard_garden_lights
   PREFIX: Courtyard Garden Lights
   WIFI_AP_SSID: ESP-C1
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -18,7 +18,7 @@ text_sensor:
 
   - id: daytime_text_sensor
     platform: mqtt_subscribe
-    topic: time/daytime
+    topic: info/time/daytime
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -26,7 +26,7 @@ sensor:
 
   - id: hour_sensor
     platform: mqtt_subscribe
-    topic: time/hour
+    topic: info/time/hour
     on_value_range:
       above: 1
       below: 2
@@ -36,7 +36,7 @@ sensor:
 binary_sensor:
   - id: daytime_sensor
     platform: template
-    lambda: return id(daytime_text_sensor).state == "ON";
+    lambda: return id(daytime_text_sensor).state == "YES";
     on_press:
       then:
         light.turn_off: relay_light
