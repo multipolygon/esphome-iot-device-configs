@@ -1,0 +1,4 @@
+# https://docs.platformio.org/en/latest/boards/espressif32/lolin_d32_pro.html#board-espressif32-lolin-d32-pro
+<<: !include ./esphome.yaml
+platform: ESP32
+board: lolin_d32_pro
