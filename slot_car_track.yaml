@@ -8,9 +8,9 @@ substitutions:
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO
   ## TIMING ##
-  ACC_TIME: 1000ms
-  SLOW_TIME: 1000ms
-  BRAKE_TIME: 100ms
+  ACC_TIME: 2000ms
+  SLOW_TIME: 2000ms
+  BRAKE_TIME: 200ms
   ## SPEED ##
   MIN_SPEED: 65%
   MAX_SPEED: 85%
