@@ -4,10 +4,4 @@ logger:
 
 # https://esphome.io/components/mqtt.html
 mqtt:
-  id: mqtt_client
-  broker: $MQTT_BROKER
-  username: $MQTT_USERNAME
-  password: $MQTT_PASSWORD
-  discovery_prefix: ${MQTT_DISCOVERY_PREFIX}homeassistant
-  topic_prefix: device/$NAME
-  reboot_timeout: $REBOOT_TIMEOUT
+  <<: !include ./mqtt_defaults.yaml

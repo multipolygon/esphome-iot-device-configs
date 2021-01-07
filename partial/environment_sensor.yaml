@@ -1,38 +1,25 @@
-esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini
-  build_path: _builds/$NAME/
-
 <<: !include ./wifi.yaml
 
+# https://esphome.io/components/logger.html
+logger:
+  level: $LOG_LEVEL
+
+# https://esphome.io/components/mqtt.html
 mqtt:
-  id: mqtt_client
-  broker: !secret MQTT_BROKER
-  username: !secret MQTT_USERNAME
-  password: !secret MQTT_PASSWORD
-  discovery_prefix: $MQTT_PREFIX/homeassistant
-  topic_prefix: $MQTT_PREFIX/$NAME
-  reboot_timeout: $REBOOT_TIMEOUT
+  <<: !include ./mqtt_defaults.yaml
   birth_message:
   will_message:
   shutdown_message:
-  on_message:
-    - topic: $MQTT_PREFIX/esphome_ota_keep_awake
-      payload: 'ON'
-      then:
-        - deep_sleep.prevent: deep_sleep_1
-        - switch.turn_on: ota_keep_awake
-    - topic: $MQTT_PREFIX/esphome_ota_keep_awake
-      payload: 'OFF'
-      then:
-        - switch.turn_off: ota_keep_awake
 
 # https://esphome.io/components/i2c.html
 i2c:
 
 text_sensor:
   - <<: !include ./wifi_ip_addr_text_sensor.yaml
+
+  - id: ota_keep_awake
+    platform: mqtt_subscribe
+    topic: info/maintenance/ota_keep_awake
 
 sensor:
   - <<: !include ./wifi_rssi_sensor.yaml
@@ -59,13 +46,6 @@ sensor:
     update_interval: never
     retain: false
 
-switch:
-  - id: ota_keep_awake
-    platform: gpio
-    pin: D4
-    inverted: true
-    restore_mode: ALWAYS_OFF
-
 interval:
   - interval: 30s
     then:
@@ -75,18 +55,24 @@ interval:
           then:
             - component.update: sht3xd_sensor
             - component.update: bh1750_lux_sensor
-            - delay: 1s
+            - delay: 5s
             - if:
                 condition:
-                  - switch.is_on: ota_keep_awake
+                  lambda: return id(ota_keep_awake).state == "YES";
                 then:
                   - logger.log:
-                      format: "Deep sleep prevented"
+                      format: OTA Keep Awake
                       level: INFO
+                  - mqtt.publish:
+                      topic: notify/maintenance/$NAME/ota_keep_awake
+                      payload: $PREFIX - OTA Keep Awake
+                      retain: yes
                 else:
-                  - deep_sleep.enter: deep_sleep_1
+                  - mqtt.publish:
+                      topic: notify/maintenance/$NAME/ota_keep_awake
+                      payload: ""
+                      retain: yes
+                  - deep_sleep.enter:
 
 deep_sleep:
-  id: deep_sleep_1
-  run_duration: 10min
   sleep_duration: $SLEEP_DURATION

@@ -1,0 +1,16 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: beer_brew
+  PREFIX: Beer Brew
+  WIFI_AP_SSID: ESP-BB1
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: INFO
+  ## CONFIG ##
+  SLEEP_DURATION: 10min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+
+<<: !include partial/environment_sensor.yaml

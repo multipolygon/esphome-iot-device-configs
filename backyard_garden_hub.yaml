@@ -69,9 +69,11 @@ binary_sensor:
     id: pump_active_binary_sensor
     name: $PREFIX Pump Active
     lambda: |-
-        return id(water_tank_sensor).state
-        && id(daytime_text_sensor).state == "YES"
-        && id(rain_forecast_text_sensor).state == "NO";
+        return (true
+          && id(water_tank_sensor).state
+          && id(daytime_text_sensor).state == "YES"
+          // && id(rain_forecast_text_sensor).state != "YES"
+        );
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml

@@ -5,6 +5,7 @@ substitutions:
   WIFI_AP_SSID: ESP-GAR-TREL
   REBOOT_TIMEOUT: 5.1h
   LOG_LEVEL: INFO
+  ## CONFIG ##
   WARM_WEATHER_TIMER: "90"
   HOT_WEATHER_TIMER: "120"
   ## PINS ##
@@ -156,19 +157,15 @@ binary_sensor:
     id: active_binary_sensor
     name: $PREFIX Active
     lambda: |-
-      if (
-        id(enable_switch).state
+      return (true
+        && id(enable_switch).state
         && id(water_tank_sensor).state
         && id(daytime_sensor).state
-        && id(rain_forecast).state != "YES"
+        // && id(rain_forecast).state != "YES"
         && id(temp_sensor).state > 10
         && id(temp_sensor).state < 40
         && id(humid_sensor).state < 70
-      ) {
-        return true;
-      } else {
-        return false;
-      }
+      );
 
 # https://esphome.io/guides/automations.html#script
 script:

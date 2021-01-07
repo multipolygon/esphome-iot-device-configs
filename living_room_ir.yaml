@@ -1,0 +1,119 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: living_room_ir
+  PREFIX: Living Room IR
+  WIFI_AP_SSID: ESP-IRT
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: DEBUG
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+  # <<: !include partial/esphome_lolin_d32_pro.yaml
+
+# status_led:
+#   pin:
+#     number: GPIO5
+#     inverted: true
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+remote_transmitter:
+  pin:
+    number: D3 # GPIO32
+    inverted: no
+  carrier_duty_percent: 50%
+
+remote_receiver:
+  id: rcvr
+  pin:
+    number: D4 # GPIO34
+    inverted: yes
+  dump: all
+
+climate:
+  - platform: daikin
+    name: $PREFIX Daikin AC
+    receiver_id: rcvr
+
+switch:
+  ############### Air Filter ###############
+
+  - platform: template
+    name: $PREFIX Air Filter Power
+    turn_on_action:
+      remote_transmitter.transmit_nec:
+        address: 0x0057
+        command: 0x837C
+
+  - platform: template
+    name: $PREFIX Air Filter Speed
+    turn_on_action:
+      remote_transmitter.transmit_nec:
+        address: 0x0057
+        command: 0x817E
+
+  ############### Sunbeam Fan ###############
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Power
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: '11011000000'
+        protocol: 4
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Speed
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: '11011000001'
+        protocol: 4
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Swing
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: '11011001000'
+        protocol: 4
+
+  ############### Sony TV ###############
+
+  - platform: template
+    name: $PREFIX Sony TV Power
+    turn_on_action:
+      remote_transmitter.transmit_sony:
+        data: 0x00000A90
+        nbits: 12
+        repeat: 3
+
+  - platform: template
+    name: $PREFIX Sony TV Mute
+    turn_on_action:
+      remote_transmitter.transmit_sony:
+        data: 0x00000290
+        nbits: 12
+        repeat: 3
+
+  - platform: template
+    name: $PREFIX Sony TV Volume Up
+    turn_on_action:
+      remote_transmitter.transmit_sony:
+        data: 0x00000490
+        nbits: 12
+        repeat: 3
+
+  - platform: template
+    name: $PREFIX Sony TV Volume Down
+    turn_on_action:
+      remote_transmitter.transmit_sony:
+        data: 0x00000C90
+        nbits: 12
+        repeat: 3
