@@ -1,19 +1,13 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: studio_psu
   PREFIX: Studio PSU
   WIFI_AP_SSID: ESP-SPSU
   REBOOT_TIMEOUT: 180min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
-  POLL_INTERVAL: 10sec
-  POST_INTERVAL: 1min
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
-
-globals:
-  - id: fan_level
-    type: int
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -30,83 +24,68 @@ sensor:
 
   - platform: sht3xd
     address: 0x45
-    update_interval: $POLL_INTERVAL
+    update_interval: 10s
     temperature:
       id: temp_sensor
+      name: $PREFIX Temperature
+      filters:
+        sliding_window_moving_average:
+          window_size: 6
+          send_every: 6
     humidity:
-      id: humid_sensor 
-
-  - name: $PREFIX Temperature
-    platform: template
-    lambda: return id(temp_sensor).state;
-    update_interval: $POST_INTERVAL
-    accuracy_decimals: 0
-    unit_of_measurement: °C
-
-  - name: $PREFIX Fan Level
-    platform: template
-    lambda: return id(fan_level);
-    update_interval: $POST_INTERVAL
-    accuracy_decimals: 0
-    unit_of_measurement: speed
+      id: humid_sensor
 
 binary_sensor:
   - platform: template
     name: $PREFIX Temperature Critical
-    lambda: return id(temp_sensor).state >= 50;
+    lambda: return id(temp_sensor).raw_state >= 50;
+    filters:
+      - delayed_off: 5min
     on_press:
       then:
-        - lambda: id(fan_level) = 0;
         - switch.turn_off: power_switch
-        - switch.turn_on: fan_high
-        - switch.turn_on: fan_medium
-        - switch.turn_on: fan_low
         - mqtt.publish:
-            topic: notify/critical
-            payload: $PREFIX Over 50°C!
-
-  - platform: template
-    name: $PREFIX Temperature Warning
-    lambda: return id(temp_sensor).state >= 40 && id(temp_sensor).state < 50;
-    on_press:
-      then:
-        - lambda: id(fan_level) = 3;
-        - switch.turn_on: fan_high
-        - switch.turn_off: fan_medium
-        - switch.turn_off: fan_low
-        - mqtt.publish:
-            topic: notify/warning
-            payload: $PREFIX Over 40°C!
+            topic: notify/warning/$NAME/temperature
+            payload: $PREFIX - Temperature Critical
+            retain: yes
+    on_release:
+      - switch.turn_on: power_switch
 
   - platform: template
     name: $PREFIX Temperature High
-    lambda: return id(temp_sensor).state >= 30 && id(temp_sensor).state < 40;
+    lambda: return id(temp_sensor).raw_state >= 40;
+    filters:
+      - delayed_off: 5min
     on_press:
       then:
-        - lambda: id(fan_level) = 2;
         - switch.turn_on: fan_high
-        - delay: 3s
-        - switch.turn_off: fan_high
-        - switch.turn_on: fan_medium
-        - switch.turn_off: fan_low
         - mqtt.publish:
-            topic: notify/maintenance
-            payload: $PREFIX Fan level 2
+            topic: notify/warning/$NAME/temperature
+            payload: $PREFIX - Temperature High
+            retain: yes
+    on_release:
+      then:
+        - switch.turn_off: fan_high
 
   - platform: template
-    name: $PREFIX Temperature Normal
-    lambda: return id(temp_sensor).state < 30;
+    name: $PREFIX Temperature Medium
+    lambda: return id(temp_sensor).raw_state >= 30;
+    filters:
+      - delayed_off: 5min
     on_press:
-      then: 
-        - lambda: id(fan_level) = 1;
-        - switch.turn_on: fan_high
-        - delay: 3s
-        - switch.turn_off: fan_high
-        - switch.turn_off: fan_medium
-        - switch.turn_on: fan_low
+      then:
+        - switch.turn_on: fan_medium
         - mqtt.publish:
-            topic: notify/maintenance
-            payload: $PREFIX Fan level 1
+            topic: notify/warning/$NAME/temperature
+            payload: $PREFIX - Temperature Medium
+            retain: yes
+    on_release:
+      then:
+        - switch.turn_off: fan_medium
+        - mqtt.publish:
+            topic: notify/warning/$NAME/temperature
+            payload: ""
+            retain: yes
 
 switch:
   - id: power_switch
@@ -117,7 +96,12 @@ switch:
     inverted: yes
     on_turn_on:
       then:
-        switch.turn_on: fan_high
+        - switch.turn_on: fan_high
+        - switch.turn_on: fan_medium
+        - switch.turn_on: fan_low
+        - delay: 3s
+        - switch.turn_off: fan_high
+        - switch.turn_off: fan_medium
 
   # 3.9k
   - id: fan_high
