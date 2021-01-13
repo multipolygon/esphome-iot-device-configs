@@ -1,21 +1,29 @@
 substitutions:
   <<: !include secrets_ag.yaml
   NAME: living_room_ir
-  PREFIX: Living Room IR
+  PREFIX: Living Room
   WIFI_AP_SSID: ESP-IRT
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: DEBUG
+  ## PINS ##
+  I2C_1_PIN: D1
+  I2C_2_PIN: D2
+  PIR_MOTION_PIN: D3
+  IR_RECEIVER_PIN: D4
+  IR_TRANSMITTER_PIN: D5
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
   # <<: !include partial/esphome_lolin_d32_pro.yaml
+  on_boot:
+    - delay: 1s
+    - remote_transmitter.transmit_raw:
+        code: [-100, 100, -100]
 
-# status_led:
-#   pin:
-#     number: GPIO5
-#     inverted: true
+i2c:
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
+# <<: !include partial/lolin_d32_pro_status_led.yaml
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 
@@ -26,23 +34,101 @@ sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
+  - platform: sht3xd
+    address: 0x45
+    update_interval: 1min
+    temperature:
+      name: $PREFIX Temperature
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+    humidity:
+      id: humid_sensor
+      name: $PREFIX Humidity
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+binary_sensor:
+  - name: $PREFIX Motion
+    device_class: motion
+    platform: gpio
+    pin:
+      number: $PIR_MOTION_PIN
+      mode: INPUT
+
+  - id: ir_light_up
+    platform: remote_receiver
+    nec:
+      address: 0x00F7
+      command: 0x00FF
+    on_press:
+      then:
+        mqtt.publish:
+          topic: scene/living_room
+          payload: BRIGHT_LIGHT
+          retain: no
+          qos: 1
+
+  - id: ir_light_down
+    platform: remote_receiver
+    nec:
+      address: 0x00F7
+      command: 0x807F
+    on_press:
+      then:
+        mqtt.publish:
+          topic: scene/living_room
+          payload: LOW_LIGHT
+          retain: no
+          qos: 1
+
+  - id: ir_light_on
+    platform: remote_receiver
+    nec:
+      address: 0x00F7
+      command: 0xC03F # ON
+    on_press:
+      then:
+        mqtt.publish:
+          topic: scene/living_room
+          payload: BRIGHT_LIGHT
+          retain: no
+          qos: 1
+
+  - id: ir_light_off
+    platform: remote_receiver
+    nec:
+      address: 0x00F7
+      command: 0x40BF # OFF
+    on_press:
+      then:
+        mqtt.publish:
+          topic: scene/living_room
+          payload: NIGHT_LIGHT
+          retain: no
+          qos: 1
+
 remote_transmitter:
   pin:
-    number: D3 # GPIO32
+    number: $IR_TRANSMITTER_PIN
     inverted: no
   carrier_duty_percent: 50%
 
+## https://www.esphome.io/components/remote_receiver.html
 remote_receiver:
-  id: rcvr
+  id: ir_receiver
+  # dump: all
   pin:
-    number: D4 # GPIO34
+    number: $IR_RECEIVER_PIN
     inverted: yes
-  dump: all
 
 climate:
   - platform: daikin
     name: $PREFIX Daikin AC
-    receiver_id: rcvr
+    receiver_id: ir_receiver
 
 switch:
   ############### Air Filter ###############
