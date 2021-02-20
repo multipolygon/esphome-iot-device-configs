@@ -1,0 +1,74 @@
+# Misol rain gauge part no. MS-WH-SP-RG with reed switch
+
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: raingauge
+  PREFIX: Raingauge
+  WIFI_AP_SSID: ESP-RG
+  REBOOT_TIMEOUT: 5.1h
+  LOG_LEVEL: DEBUG
+  ## PINS ##
+  RAINGAUGE_PIN: D3
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+globals:
+  - id: rain_total
+    type: float
+    # restore_value: yes
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+binary_sensor:
+  - id: raingauge_binary
+    platform: gpio
+    pin: $RAINGAUGE_PIN
+    filters:
+      - delayed_off: 1ms
+    on_release:
+      - lambda: id(rain_total) += 0.2794;
+  
+sensor:
+  - name: $PREFIX Total
+    platform: template
+    lambda: return id(rain_total);
+    update_interval: 60s
+    unit_of_measurement: mm
+    accuracy_decimals: 3
+    icon: mdi:weather-rainy
+
+  - id: raingauge
+    name: $PREFIX Pulse
+    platform: pulse_counter
+    pin: $RAINGAUGE_PIN
+    update_interval: 60s
+    accuracy_decimals: 0
+    unit_of_measurement: p/m
+    icon: mdi:weather-rainy
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: DISABLE
+    internal_filter: 13us
+    total:
+      name: $PREFIX Pulse Hour
+      unit_of_measurement: p/h
+      accuracy_decimals: 0
+      icon: mdi:weather-rainy
+
+time:
+  - id: ntp_time
+    platform: sntp
+    servers:
+      - $MQTT_BROKER
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 9
+        then:
+          lambda: id(rain_total) = 0;
