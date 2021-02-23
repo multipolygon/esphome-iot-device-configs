@@ -1,7 +1,7 @@
 substitutions:
   <<: !include secrets_rc.yaml
-  NAME: shed_water_tank
-  PREFIX: Shed Tank
+  NAME: shed_irrigation_ctl
+  PREFIX: Shed Irr Ctl
   WIFI_AP_SSID: ESP-ST
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO
@@ -19,6 +19,7 @@ substitutions:
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
   on_boot:
+    - switch.turn_on: pump
     - delay: 15min
     - globals.set:
         id: initialized
@@ -127,11 +128,13 @@ switch:
     platform: gpio
     pin: $PUMP_PIN
     on_turn_on:
-      - script.execute: pump_timer
+      # - script.execute: pump_timer
+      - switch.turn_on: valve_1
+      - switch.turn_on: valve_2
     on_turn_off:
       - switch.turn_off: valve_1
       - switch.turn_off: valve_2
-      - script.stop: pump_timer
+      # - script.stop: pump_timer
 
 script:
   - id: pump_timer
@@ -145,3 +148,4 @@ script:
       - switch.turn_off: valve_1
       - delay: 5min
       - switch.turn_off: pump
+
