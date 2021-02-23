@@ -10,7 +10,9 @@ esphome:
   <<: !include partial/esphome_d1_mini.yaml
   on_boot:
     - delay: 1s
-    - light.turn_off: leds
+    - light.turn_on:
+        id: leds
+        effect: Random Twinkle
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -34,7 +36,7 @@ sensor:
       above: 0
       below: 1
       then:
-        light.turn_off: leds  
+        light.turn_off: leds
 
 binary_sensor:
   - id: daytime_sensor
@@ -79,17 +81,23 @@ light:
     id: leds
     name: $PREFIX Light
     effects:
-      - addressable_rainbow:    
+      - addressable_rainbow:
       - addressable_color_wipe:
       - addressable_scan:
       - addressable_twinkle:
       - addressable_random_twinkle:
       - addressable_fireworks:
+      - addressable_fireworks:
+          name: Nightclub
+          spark_probability: 95%
+          use_random_color: no
+          fade_out_rate: 200
+      - addressable_fireworks:
+          name: Chaos
+          spark_probability: 95%
+          use_random_color: no
+          fade_out_rate: 50
       - addressable_flicker:
           name: Flicker
-      - addressable_flicker:
-          name: Flicker More
-          update_interval: 16ms
-          intensity: 50%
 
 
