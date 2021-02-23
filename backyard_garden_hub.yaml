@@ -7,6 +7,7 @@ substitutions:
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 10min
   # PINS:
+  RAINGAUGE_PIN: D3
   FERNERY_TANK_PIN: D5
   FERNERY_LIGHTS_PIN: D6
   FERNERY_PUMP_PIN: D7
@@ -14,6 +15,16 @@ substitutions:
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
+
+globals:
+  - id: rainfall_total
+    type: float
+    restore_value: yes
+
+  - id: pump_enable
+    type: bool
+    initial_value: "true"
+    restore_value: yes
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -31,6 +42,14 @@ text_sensor:
     topic: info/weather/forecast/today/rain
 
 binary_sensor:
+  - id: raingauge_binary
+    platform: gpio
+    pin: $RAINGAUGE_PIN
+    filters:
+      - delayed_off: 1ms
+    on_release:
+      - lambda: id(rainfall_total) += 0.2794;
+
   - id: water_tank_sensor
     name: $PREFIX Water Tank
     platform: gpio
@@ -70,6 +89,7 @@ binary_sensor:
     name: $PREFIX Pump Active
     lambda: |-
         return (true
+          && id(pump_enable)
           && id(water_tank_sensor).state
           && id(daytime_text_sensor).state == "YES"
           // && id(rain_forecast_text_sensor).state != "YES"
@@ -78,6 +98,14 @@ binary_sensor:
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
+
+  - name: $PREFIX Rainfall
+    platform: template
+    lambda: return id(rainfall_total);
+    update_interval: 60s
+    unit_of_measurement: mm
+    accuracy_decimals: 3
+    icon: mdi:weather-rainy
 
   - id: hour_sensor
     platform: mqtt_subscribe
@@ -90,6 +118,15 @@ sensor:
         - light.turn_off: fernery_lights
 
 switch:
+  - id: pump_enable_switch
+    name: $PREFIX Pump Enable
+    platform: template
+    lambda: return id(pump_enable);
+    turn_on_action:
+      lambda: id(pump_enable) = true;
+    turn_off_action:
+      lambda: id(pump_enable) = false;
+
   # TIP41C
   - id: pump_switch
     name: $PREFIX Pump
@@ -126,6 +163,12 @@ time:
     servers:
       - $MQTT_BROKER
     on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 9
+        then:
+          lambda: id(rainfall_total) = 0;
+
       - seconds: 0
         minutes: 0
         hours: /1
