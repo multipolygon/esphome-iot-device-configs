@@ -1,7 +1,7 @@
 substitutions:
-  <<: !include secrets_rc.yaml
-  NAME: shed_irrigation_ctl
-  PREFIX: Shed Irr Ctl
+  <<: !include secrets_wl.yaml
+  NAME: wl_irrigation
+  PREFIX: Irrigation
   WIFI_AP_SSID: ESP-ST
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO

@@ -1,0 +1,93 @@
+substitutions:
+  <<: !include secrets_wl.yaml
+  # <<: !include secrets_ag.yaml
+  NAME: wl_water_tank
+  PREFIX: Water Tank
+  WIFI_AP_SSID: ESP-WLWT
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: ERROR
+  UPDATE_INTERVAL: 15min
+  ## PINS ##
+  ULTRASONIC_TRIGGER_PIN: D6
+  ULTRASONIC_ECHO_PIN: D7
+  ## CONFIG ##
+  TANK_DEPTH: "2.44"
+  TANK_AREA: "8.0" # m^2 (radius 1.6m)
+
+esphome:
+  <<: !include partial/esphome_d1_mini_pro.yaml
+  on_boot:
+    - wait_until:
+        mqtt.connected:
+    - delay: 500ms
+    - component.update: tank_depth
+    - delay: 500ms
+    - component.update: tank_depth
+    - delay: 500ms
+    - component.update: tank_depth
+    - delay: 500ms
+    - component.update: tank_depth
+
+globals:
+  - id: last_capacity
+    type: float
+    restore_value: yes
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi_ext.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  # https://esphome.io/components/sensor/ultrasonic.html
+  - id: tank_depth
+    name: $PREFIX Depth
+    platform: ultrasonic
+    trigger_pin: $ULTRASONIC_TRIGGER_PIN
+    echo_pin: $ULTRASONIC_ECHO_PIN
+    pulse_time: 10us
+    timeout: 5.0m
+    unit_of_measurement: m
+    accuracy_decimals: 2
+    update_interval: 60s
+    filters:
+      - lambda: return ($TANK_DEPTH - x);
+      - sliding_window_moving_average:
+          window_size: 15
+          send_every: 15
+          send_first_at: 5
+    on_value:
+      - component.update: tank_volume
+      - component.update: tank_capacity
+
+  - id: tank_volume
+    name: $PREFIX Volume
+    platform: template
+    lambda: return id(tank_depth).state * $TANK_AREA * 1000;
+    unit_of_measurement: L
+    accuracy_decimals: 0
+    update_interval: never
+
+  - id: tank_capacity
+    name: $PREFIX Capacity
+    platform: template
+    lambda: return id(tank_depth).state / $TANK_DEPTH * 100;
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: never
+    on_value:
+      if:
+        condition:
+          lambda: return abs(id(last_capacity) - id(tank_capacity).state) > 5;
+        then:
+          - lambda: id(last_capacity) = id(tank_capacity).state;
+          - mqtt.publish:
+              topic: notify/maintenance/$NAME/capacity
+              payload: !lambda |-
+                return "$PREFIX: " + to_string(id(tank_depth).state) + "%, " + to_string(id(tank_volume).state) + "L";
+              retain: no

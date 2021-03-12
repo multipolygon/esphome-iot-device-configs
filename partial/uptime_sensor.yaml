@@ -2,4 +2,4 @@
 platform: uptime
 id: uptime_sensor
 name: $PREFIX Uptime
-update_interval: 5min
+update_interval: $UPDATE_INTERVAL
