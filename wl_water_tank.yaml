@@ -11,7 +11,7 @@ substitutions:
   ULTRASONIC_TRIGGER_PIN: D6
   ULTRASONIC_ECHO_PIN: D7
   ## CONFIG ##
-  TANK_DEPTH: "2.44"
+  TANK_MAX_DEPTH: "2.44" #m
   TANK_AREA: "8.0" # m^2 (radius 1.6m)
 
 esphome:
@@ -19,6 +19,7 @@ esphome:
   on_boot:
     - wait_until:
         mqtt.connected:
+    ## This is needed to bootstrap an average value:
     - delay: 500ms
     - component.update: tank_depth
     - delay: 500ms
@@ -31,7 +32,7 @@ esphome:
 globals:
   - id: last_capacity
     type: float
-    restore_value: yes
+    restore_value: no
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi_ext.yaml
@@ -54,12 +55,12 @@ sensor:
     timeout: 5.0m
     unit_of_measurement: m
     accuracy_decimals: 2
-    update_interval: 60s
+    update_interval: 30s
     filters:
-      - lambda: return ($TANK_DEPTH - x);
+      - lambda: return ($TANK_MAX_DEPTH - x);
       - sliding_window_moving_average:
-          window_size: 15
-          send_every: 15
+          window_size: 30
+          send_every: 30
           send_first_at: 5
     on_value:
       - component.update: tank_volume
@@ -76,18 +77,22 @@ sensor:
   - id: tank_capacity
     name: $PREFIX Capacity
     platform: template
-    lambda: return id(tank_depth).state / $TANK_DEPTH * 100;
+    lambda: return id(tank_depth).state / $TANK_MAX_DEPTH * 100;
     unit_of_measurement: "%"
     accuracy_decimals: 0
     update_interval: never
     on_value:
       if:
         condition:
-          lambda: return abs(id(last_capacity) - id(tank_capacity).state) > 5;
+          lambda: return abs(x - id(last_capacity)) > 5.0;
         then:
-          - lambda: id(last_capacity) = id(tank_capacity).state;
+          - lambda: id(last_capacity) = x;
           - mqtt.publish:
               topic: notify/maintenance/$NAME/capacity
               payload: !lambda |-
-                return "$PREFIX: " + to_string(id(tank_depth).state) + "%, " + to_string(id(tank_volume).state) + "L";
+                return "$PREFIX: " + to_string(int(x)) + "% (" + to_string(int(id(tank_volume).state)) + "L)";
               retain: no
+
+switch:
+  - platform: restart
+    name: $PREFIX Restart
