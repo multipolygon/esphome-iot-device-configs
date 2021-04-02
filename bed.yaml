@@ -1,0 +1,140 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: bed
+  PREFIX: Bed
+  WIFI_AP_SSID: ESP-BED
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
+  ## CONFIG ##
+  DELAY: 750ms
+  TRANSITION: 500ms
+
+esphome:
+  <<: !include partial/esphome_lolin_d32_pro.yaml
+
+status_led:
+  pin:
+    number: GPIO5
+    inverted: true
+
+<<: !include partial/lolin_d32_pro_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+binary_sensor:
+  - id: button18
+    # name: $PREFIX Button 18
+    platform: gpio
+    pin:
+      number: GPIO18
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      delayed_off: 500ms
+    on_press:
+      script.execute: audio_timer_script
+
+  - id: button19
+    # name: $PREFIX Button 19
+    platform: gpio
+    pin:
+      number: GPIO19
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      delayed_on_off: 20ms
+    on_press:
+      if:
+        condition:
+          light.is_off: lamp_light
+        then:
+          script.execute: lamp_brightness_script
+        else:
+          script.execute: lamp_off_script
+    on_release:
+      - script.stop: lamp_brightness_script
+      - script.stop: lamp_off_script
+
+  - id: button23
+    # name: $PREFIX Button 23
+    platform: gpio
+    pin:
+      number: GPIO23
+      mode: INPUT_PULLUP
+      inverted: true
+
+  - id: button22
+    # name: $PREFIX Button 22
+    platform: gpio
+    pin:
+      number: GPIO22
+      mode: INPUT_PULLUP
+      inverted: true
+
+switch:
+  - id: audio_switch
+    name: $PREFIX Audio
+    platform: gpio
+    pin: GPIO25
+
+output:
+  - id: lamp_output
+    platform: ledc
+    pin: GPIO26
+    frequency: 1220Hz
+
+light:
+  - id: lamp_light
+    name: $PREFIX Lamp
+    platform: monochromatic
+    output: lamp_output
+    default_transition_length: 0s
+
+script:
+  - id: audio_timer_script
+    mode: restart
+    then:
+      - switch.turn_on: audio_switch
+      - delay: 60min
+      - switch.turn_off: audio_switch
+
+  - id: lamp_brightness_script
+    mode: single
+    then:
+      - light.turn_on:
+          id: lamp_light
+          brightness: 25%
+      - delay: $DELAY
+      - light.turn_on:
+          id: lamp_light
+          brightness: 50%
+          transition_length: $TRANSITION
+      - delay: $DELAY
+      - light.turn_on:
+          id: lamp_light
+          brightness: 75%
+          transition_length: $TRANSITION
+      - delay: $DELAY
+      - light.turn_on:
+          id: lamp_light
+          brightness: 100%
+          transition_length: $TRANSITION
+
+  - id: lamp_off_script
+    mode: single
+    then:
+      - light.turn_off: lamp_light
+      - delay: $DELAY
+      - script.execute: lamp_brightness_script
+
+esp32_ble_beacon:
+  type: iBeacon
+  uuid: $IBEACON_BED
