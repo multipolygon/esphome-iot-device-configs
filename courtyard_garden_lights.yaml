@@ -5,6 +5,7 @@ substitutions:
   WIFI_AP_SSID: ESP-C1
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -28,8 +29,7 @@ sensor:
     platform: mqtt_subscribe
     topic: info/time/hour
     on_value_range:
-      above: 1
-      below: 2
+      below: 0 # midnight
       then:
         light.turn_off: relay_light
 
