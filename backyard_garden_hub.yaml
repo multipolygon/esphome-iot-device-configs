@@ -5,19 +5,25 @@ substitutions:
   WIFI_AP_SSID: ESP-BGBH
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
-  UPDATE_INTERVAL: 10min
+  UPDATE_INTERVAL: 15min
   # PINS:
   RAINGAUGE_PIN: D3
   FERNERY_TANK_PIN: D5
   FERNERY_LIGHTS_PIN: D6
   FERNERY_PUMP_PIN: D7
   BACKYARD_LIGHTS_PIN: D8
+  # CONFIG:
+  RAINFALL_AVG_HOURS: '24'
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
 
 globals:
   - id: rainfall_total
+    type: float
+    restore_value: yes
+
+  - id: rainfall_hourly
     type: float
     restore_value: yes
 
@@ -46,9 +52,10 @@ binary_sensor:
     platform: gpio
     pin: $RAINGAUGE_PIN
     filters:
-      - delayed_off: 1ms
+      - delayed_off: 100ms
     on_release:
       - lambda: id(rainfall_total) += 0.2794;
+      - lambda: id(rainfall_hourly) += 0.2794;
 
   - id: water_tank_sensor
     name: $PREFIX Water Tank
@@ -93,6 +100,8 @@ binary_sensor:
           && id(water_tank_sensor).state
           && id(daytime_text_sensor).state == "YES"
           // && id(rain_forecast_text_sensor).state != "YES"
+          && id(rainfall_hourly) <= 0.5
+          && (id(rainfall_hourly_avg).state * $RAINFALL_AVG_HOURS) <= 2.0
         );
 
 sensor:
@@ -102,17 +111,37 @@ sensor:
   - name: $PREFIX Rainfall
     platform: template
     lambda: return id(rainfall_total);
-    update_interval: 60s
+    update_interval: $UPDATE_INTERVAL
     unit_of_measurement: mm
-    accuracy_decimals: 3
+    accuracy_decimals: 2
     icon: mdi:weather-rainy
+
+  - name: $PREFIX Rainfall Hourly
+    platform: template
+    lambda: return id(rainfall_hourly);
+    update_interval: $UPDATE_INTERVAL
+    unit_of_measurement: mm
+    accuracy_decimals: 2
+    icon: mdi:weather-rainy    
+
+  - id: rainfall_hourly_avg
+    name: $PREFIX Rainfall Hourly Avg
+    platform: template
+    update_interval: never
+    lambda: return id(rainfall_hourly);
+    unit_of_measurement: mm
+    accuracy_decimals: 2
+    icon: mdi:weather-rainy
+    filters:
+      sliding_window_moving_average:
+        window_size: $RAINFALL_AVG_HOURS
+        send_every: 1
 
   - id: hour_sensor
     platform: mqtt_subscribe
     topic: info/time/hour
     on_value_range:
-      above: 1
-      below: 2
+      below: 0 # midnight
       then:
         - light.turn_off: garden_lights
         - light.turn_off: fernery_lights
@@ -165,12 +194,19 @@ time:
     on_time:
       - seconds: 0
         minutes: 0
-        hours: 9
+        hours: 10
         then:
           lambda: id(rainfall_total) = 0;
 
       - seconds: 0
         minutes: 0
+        hours: /1
+        then:
+          - component.update: rainfall_hourly_avg
+          - lambda: id(rainfall_hourly) = 0;
+
+      - seconds: 0
+        minutes: 30
         hours: /2
         then:
           if:
