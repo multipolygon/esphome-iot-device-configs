@@ -5,6 +5,11 @@ substitutions:
   WIFI_AP_SSID: ESP-SPSU
   REBOOT_TIMEOUT: 180min
   LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
+  ## PINS:
+  FAN_HIGH_PIN: D5
+  PSU_POWER_PIN: D6
+  FAN_LOW_PIN: D7
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -45,7 +50,7 @@ binary_sensor:
       then:
         - switch.turn_off: power_switch
         - mqtt.publish:
-            topic: notify/warning/$NAME/temperature
+            topic: notify/critical/$NAME/temperature
             payload: $PREFIX - Temperature Critical
             retain: yes
     on_release:
@@ -66,22 +71,6 @@ binary_sensor:
     on_release:
       then:
         - switch.turn_off: fan_high
-
-  - platform: template
-    name: $PREFIX Temperature Medium
-    lambda: return id(temp_sensor).raw_state >= 30;
-    filters:
-      - delayed_off: 5min
-    on_press:
-      then:
-        - switch.turn_on: fan_medium
-        - mqtt.publish:
-            topic: notify/warning/$NAME/temperature
-            payload: $PREFIX - Temperature Medium
-            retain: yes
-    on_release:
-      then:
-        - switch.turn_off: fan_medium
         - mqtt.publish:
             topic: notify/warning/$NAME/temperature
             payload: ""
@@ -91,35 +80,26 @@ switch:
   - id: power_switch
     name: $PREFIX Power
     platform: gpio
-    pin: D3
+    pin: $PSU_POWER_PIN
     restore_mode: ALWAYS_ON
     inverted: yes
     on_turn_on:
       then:
         - switch.turn_on: fan_high
-        - switch.turn_on: fan_medium
         - switch.turn_on: fan_low
         - delay: 3s
         - switch.turn_off: fan_high
-        - switch.turn_off: fan_medium
 
   # 3.9k
   - id: fan_high
     name: $PREFIX Fan High
     platform: gpio
-    pin: D5
-    restore_mode: ALWAYS_ON
-
-  # 4.7k
-  - id: fan_medium
-    name: $PREFIX Fan Medium
-    platform: gpio
-    pin: D6
+    pin: $FAN_HIGH_PIN
     restore_mode: ALWAYS_ON
 
   # 5.6k
   - id: fan_low
     name: $PREFIX Fan Low
     platform: gpio
-    pin: D7
+    pin: $FAN_LOW_PIN
     restore_mode: ALWAYS_ON

@@ -1,11 +1,12 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: patio_floodlight
   PREFIX: Patio Floodlight
   SHORT_PREFIX: Patio
   WIFI_AP_SSID: ESP-PFL
-  REBOOT_TIMEOUT: 60min
+  REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
+  UPDATE_INTERVAL: 15min
 
 esphome:
   name: $NAME
@@ -36,14 +37,11 @@ sensor:
 #     retain: false
 
 output:
-  - platform: esp8266_pwm
-    id: d1_output
+  - id: d1_output
+    platform: gpio
     pin: D1
-    frequency: 100 Hz
 
 light:
-  # https://esphome.io/components/light/monochromatic.html
-  - platform: monochromatic
+  - platform: binary
     name: $SHORT_PREFIX Light
     output: d1_output
-    restore_mode: ALWAYS_OFF

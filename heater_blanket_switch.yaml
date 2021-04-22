@@ -5,6 +5,7 @@ substitutions:
   WIFI_AP_SSID: ESP-HBS
   REBOOT_TIMEOUT: 120min
   LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
 
 esphome:
   <<: !include partial/esphome_sonoff_s26.yaml
@@ -44,7 +45,7 @@ binary_sensor:
       mode: INPUT_PULLUP
       inverted: True
     filters:
-      delayed_on: 100ms
+      delayed_off: 500ms
     on_press:
       then:
         switch.toggle: relay_switch
@@ -60,7 +61,7 @@ switch:
     on_turn_off:
       light.turn_on:
         id: led_light
-        brightness: 50%
+        brightness: 30%
 
 output:
   - platform: esp8266_pwm

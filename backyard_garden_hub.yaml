@@ -13,7 +13,7 @@ substitutions:
   FERNERY_PUMP_PIN: D7
   BACKYARD_LIGHTS_PIN: D8
   # CONFIG:
-  RAINFALL_AVG_HOURS: '24'
+  RAINFALL_AVG_HOURS: "24"
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -95,14 +95,14 @@ binary_sensor:
     id: pump_active_binary_sensor
     name: $PREFIX Pump Active
     lambda: |-
-        return (true
-          && id(pump_enable)
-          && id(water_tank_sensor).state
-          && id(daytime_text_sensor).state == "YES"
-          // && id(rain_forecast_text_sensor).state != "YES"
-          && id(rainfall_hourly) <= 0.5
-          && (id(rainfall_hourly_avg).state * $RAINFALL_AVG_HOURS) <= 2.0
-        );
+      return (true
+        && id(pump_enable)
+        && id(water_tank_sensor).state
+        && id(daytime_text_sensor).state == "YES"
+        // && id(rain_forecast_text_sensor).state != "YES"
+        && id(rainfall_hourly) <= 0.5
+        && (id(rainfall_hourly_avg).state * $RAINFALL_AVG_HOURS) <= 2.0
+      );
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -122,7 +122,7 @@ sensor:
     update_interval: $UPDATE_INTERVAL
     unit_of_measurement: mm
     accuracy_decimals: 2
-    icon: mdi:weather-rainy    
+    icon: mdi:weather-rainy
 
   - id: rainfall_hourly_avg
     name: $PREFIX Rainfall Hourly Avg
@@ -196,7 +196,16 @@ time:
         minutes: 0
         hours: 10
         then:
-          lambda: id(rainfall_total) = 0;
+          - mqtt.publish:
+              topic: notify/maintenance/$NAME/rainfall/day_total
+              payload: !lambda |-
+                return "Rainfall total: " + to_string(int(id(rainfall_total))) + "mm";
+              retain: no
+          - mqtt.publish:
+              topic: info/weather/rainfall/day_total
+              payload: !lambda return to_string(id(rainfall_total));
+              retain: no
+          - lambda: id(rainfall_total) = 0;
 
       - seconds: 0
         minutes: 0
@@ -218,5 +227,5 @@ time:
 script:
   - id: pump_timer
     then:
-      - delay: 30s
+      - delay: 60s
       - switch.turn_off: pump_switch

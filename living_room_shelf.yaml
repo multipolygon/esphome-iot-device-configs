@@ -1,13 +1,21 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: living_room_shelf
   PREFIX: Living Room Shelf
-  WIFI_AP_SSID: ESP-LRSH
+  WIFI_AP_SSID: ESP-LRS
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
+  UPDATE_INTERVAL: 15min
+  ## PINS:
+  # I2C: D1
+  # I2C: D2
+  UPPER_SHELF_RELAY_PIN: D7
+  LOWER_SHELF_RELAY_PIN: D8
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
+
+i2c:
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -21,31 +29,74 @@ sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
+  - id: sht3xd_sensor
+    platform: sht3xd
+    address: 0x45
+    update_interval: $UPDATE_INTERVAL
+    temperature:
+      name: $PREFIX Temperature
+      id: temperature_sensor
+      retain: false
+    humidity:
+      name: $PREFIX Humidity
+      retain: false
+
+binary_sensor:
+  - platform: template
+    name: $PREFIX Temperature Critical
+    lambda: return id(temperature_sensor).raw_state >= 45;
+    filters:
+      - delayed_off: 5min
+    on_press:
+      mqtt.publish:
+        topic: notify/critical/$NAME/temperature
+        payload: $PREFIX High Temperature!
+        retain: yes
+    on_release:
+      mqtt.publish:
+        topic: notify/critical/$NAME/temperature
+        payload: ""
+        retain: yes
+
 output:
-  - id: relay_output
+  - id: output_top_shelf
     platform: gpio
-    pin: D1
+    pin: $UPPER_SHELF_RELAY_PIN
+
+  - id: output_lower_shelf
+    platform: gpio
+    pin: $LOWER_SHELF_RELAY_PIN
 
 light:
-  - id: relay_light
-    name: $PREFIX Light
+  - id: light_top_shelf
+    name: $PREFIX Upper
     platform: binary
-    output: relay_output
-    restore_mode: ALWAYS_OFF
+    output: output_top_shelf
+    # restore_mode: ALWAYS_OFF
+
+  - id: light_lower_shelf
+    name: $PREFIX Lower
+    platform: binary
+    output: output_lower_shelf
+    # restore_mode: ALWAYS_OFF
 
 script:
   - id: scene_living_room_bright_light
     then:
-      light.turn_on: relay_light
+      - light.turn_on: light_top_shelf
+      - light.turn_on: light_lower_shelf
 
   - id: scene_living_room_low_light
     then:
-      light.turn_on: relay_light
+      - light.turn_on: light_top_shelf
+      - light.turn_on: light_lower_shelf
 
   - id: scene_living_room_night_light
     then:
-      light.turn_off: relay_light
+      - light.turn_off: light_top_shelf
+      - light.turn_off: light_lower_shelf
 
   - id: scene_living_room_all_lights_off
     then:
-      light.turn_off: relay_light
+      - light.turn_off: light_top_shelf
+      - light.turn_off: light_lower_shelf
