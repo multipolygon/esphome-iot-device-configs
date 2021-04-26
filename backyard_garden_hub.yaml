@@ -47,6 +47,17 @@ text_sensor:
     platform: mqtt_subscribe
     topic: info/weather/forecast/today/rain
 
+  - id: security_motion_outside
+    platform: mqtt_subscribe
+    topic: security/motion/outside/#
+    on_value:
+      then:
+        if:
+          condition:
+            lambda: return id(daytime_sensor).state == false && id(hour_sensor).state >= 0;
+          then:
+            script.execute: light_timer
+
 binary_sensor:
   - id: raingauge_binary
     platform: gpio
@@ -164,6 +175,18 @@ switch:
     on_turn_on:
       script.execute: pump_timer
 
+  - id: notify_rainfall_day_total
+    name: $PREFIX Notify Rainfall
+    platform: template
+    turn_on_action:
+      mqtt.publish:
+        topic: notify/maintenance/$NAME/rainfall/day_total
+        payload: !lambda |-
+          char s[32];
+          snprintf(s, sizeof(s), "%0.2f", id(rainfall_total));
+          return "Rainfall yesterday: " + to_string(s) + "mm";
+        retain: no
+
 output:
   - id: backyard_lights_relay
     platform: gpio
@@ -196,15 +219,7 @@ time:
         minutes: 0
         hours: 10
         then:
-          - mqtt.publish:
-              topic: notify/maintenance/$NAME/rainfall/day_total
-              payload: !lambda |-
-                return "Rainfall total: " + to_string(int(id(rainfall_total))) + "mm";
-              retain: no
-          - mqtt.publish:
-              topic: info/weather/rainfall/day_total
-              payload: !lambda return to_string(id(rainfall_total));
-              retain: no
+          - switch.turn_on: notify_rainfall_day_total
           - lambda: id(rainfall_total) = 0;
 
       - seconds: 0
@@ -229,3 +244,12 @@ script:
     then:
       - delay: 60s
       - switch.turn_off: pump_switch
+
+  - id: light_timer
+    mode: restart
+    then:
+      - light.turn_on: garden_lights
+      - light.turn_on: fernery_lights
+      - delay: 10min
+      - light.turn_off: garden_lights
+      - light.turn_off: fernery_lights

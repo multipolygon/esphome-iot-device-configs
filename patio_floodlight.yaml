@@ -7,12 +7,20 @@ substitutions:
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 15min
+  ## PINS ##
+  LIGHT_PIN: D1
+  PIR_PIN: D2
 
 esphome:
   name: $NAME
   platform: ESP8266
   board: d1_mini
   build_path: _builds/$NAME/
+
+globals:
+  - id: sensor_enabled
+    type: boolean
+    restore_value: yes
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -21,20 +29,44 @@ esphome:
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
 
+  - id: security_enabled
+    platform: mqtt_subscribe
+    topic: security/enabled
+
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
   - <<: !include partial/uptime_sensor.yaml
 
 ## https://esphome.io/components/binary_sensor/index.html
-# binary_sensor:
-#   - platform: gpio
-#     pin:
-#       number: D2
-#       mode: INPUT_PULLUP
-#       inverted: false
-#     name: $SHORT_PREFIX Motion
-#     device_class: motion
-#     retain: false
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: $PIR_PIN
+      mode: INPUT_PULLUP
+    name: $SHORT_PREFIX Motion
+    device_class: motion
+    retain: false
+    filters:
+      delayed_off: 5min
+    on_press:
+      - if:
+          condition:
+            lambda: return id(sensor_enabled);
+          then:
+            - light.turn_on: flood
+            - script.execute: sensor_timer
+      - mqtt.publish:
+          topic: security/motion/outside/$SHORT_PREFIX
+          payload: detected
+          retain: no
+      - if:
+          condition:
+            lambda: id(security_enabled).state == "YES";
+          then:
+            mqtt.publish:
+              topic: notify/critical/$SHORT_PREFIX/motion
+              payload: $SHORT_PREFIX motion detected!
+              retain: no
 
 output:
   - id: d1_output
@@ -42,6 +74,24 @@ output:
     pin: D1
 
 light:
-  - platform: binary
+  - id: flood
+    platform: binary
     name: $SHORT_PREFIX Light
     output: d1_output
+
+switch:
+  - platform: template
+    name: $SHORT_PREFIX Sensor
+    lambda: return id(sensor_enabled);
+    turn_on_action:
+      - lambda: id(sensor_enabled) = true;
+    turn_off_action:
+      - lambda: id(sensor_enabled) = false;
+      - light.turn_off: flood
+
+script:
+  - id: sensor_timer
+    mode: restart
+    then:
+      - delay: 10min
+      - light.turn_off: flood
