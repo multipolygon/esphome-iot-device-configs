@@ -1,8 +1,8 @@
 substitutions:
   <<: !include secrets_ag.yaml
-  NAME: studio_env_sensor
-  PREFIX: Studio
-  WIFI_AP_SSID: ESP-SES
+  NAME: living_room_env_sensor
+  PREFIX: Living Room
+  WIFI_AP_SSID: ESP-LRES
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: WARN
   UPDATE_INTERVAL: 5min

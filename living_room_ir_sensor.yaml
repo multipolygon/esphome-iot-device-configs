@@ -2,7 +2,7 @@ substitutions:
   <<: !include secrets_ag.yaml
   NAME: living_room_ir
   PREFIX: Living Room
-  WIFI_AP_SSID: ESP-IRT
+  WIFI_AP_SSID: ESP-LRS
   REBOOT_TIMEOUT: 15min
   UPDATE_INTERVAL: 15min
   LOG_LEVEL: WARN
@@ -15,7 +15,6 @@ substitutions:
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
-  # <<: !include partial/esphome_lolin_d32_pro.yaml
   on_boot:
     - delay: 1s
     - remote_transmitter.transmit_raw:
@@ -24,7 +23,6 @@ esphome:
 i2c:
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
-# <<: !include partial/lolin_d32_pro_status_led.yaml
 <<: !include partial/wifi.yaml
 <<: !include partial/mqtt.yaml
 
@@ -37,20 +35,22 @@ sensor:
 
   - platform: sht3xd
     address: 0x45
-    update_interval: 1min
+    update_interval: 10s
     temperature:
-      name: $PREFIX Temperature
+      id: temperature_sensor
+      name: $PREFIX Inverter Temperature
+      accuracy_decimals: 0
       filters:
         sliding_window_moving_average:
-          window_size: 10
-          send_every: 10
+          window_size: 6
+          send_every: 6
     humidity:
       id: humid_sensor
-      name: $PREFIX Humidity
+      accuracy_decimals: 0
       filters:
         sliding_window_moving_average:
-          window_size: 10
-          send_every: 10
+          window_size: 6
+          send_every: 6
 
 binary_sensor:
   - name: $PREFIX Motion
@@ -114,6 +114,19 @@ binary_sensor:
           retain: no
           qos: 1
 
+  - id: ir_grow_light_off
+    platform: remote_receiver
+    nec:
+      address: 0x00F7
+      command: 0xA05F # G
+    on_press:
+      then:
+        mqtt.publish_json:
+          topic: device/kitchen_grow_light/light/kitchen_grow_light/command
+          payload: root["state"] = "OFF";
+          retain: no
+          qos: 1
+
 remote_transmitter:
   pin:
     number: $IR_TRANSMITTER_PIN
@@ -132,6 +145,7 @@ climate:
   - platform: daikin
     name: $PREFIX Daikin AC
     receiver_id: ir_receiver
+    sensor: temperature_sensor
 
 switch:
   ############### Air Filter ###############
@@ -149,29 +163,6 @@ switch:
       remote_transmitter.transmit_nec:
         address: 0x0057
         command: 0x817E
-
-  ############### Sunbeam Fan ###############
-
-  - platform: template
-    name: $PREFIX Sunbeam Fan Power
-    turn_on_action:
-      remote_transmitter.transmit_rc_switch_raw:
-        code: '11011000000'
-        protocol: 4
-
-  - platform: template
-    name: $PREFIX Sunbeam Fan Speed
-    turn_on_action:
-      remote_transmitter.transmit_rc_switch_raw:
-        code: '11011000001'
-        protocol: 4
-
-  - platform: template
-    name: $PREFIX Sunbeam Fan Swing
-    turn_on_action:
-      remote_transmitter.transmit_rc_switch_raw:
-        code: '11011001000'
-        protocol: 4
 
   ############### Sony TV ###############
 

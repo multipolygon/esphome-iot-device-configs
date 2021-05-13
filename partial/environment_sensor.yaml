@@ -21,6 +21,11 @@ text_sensor:
     platform: mqtt_subscribe
     topic: info/maintenance/ota_keep_awake
 
+binary_sensor:
+  - name: $PREFIX Keep Awake
+    platform: template
+    lambda: return id(ota_keep_awake).state == "YES";
+
 sensor:
   - <<: !include ./wifi_rssi_sensor.yaml
   - <<: !include ./uptime_sensor.yaml
@@ -33,10 +38,12 @@ sensor:
     temperature:
       name: $PREFIX Temperature
       retain: false
+      accuracy_decimals: 0
 
     humidity:
       name: $PREFIX Humidity
       retain: false
+      accuracy_decimals: 0
 
   - platform: bh1750
     id: bh1750_lux_sensor
@@ -47,7 +54,7 @@ sensor:
     retain: false
 
 interval:
-  - interval: 30s
+  - interval: 10s
     then:
       - if:
           condition:
@@ -63,16 +70,9 @@ interval:
                   - logger.log:
                       format: OTA Keep Awake
                       level: INFO
-                  - mqtt.publish:
-                      topic: notify/maintenance/$NAME/ota_keep_awake
-                      payload: $PREFIX - OTA Keep Awake
-                      retain: yes
                 else:
-                  - mqtt.publish:
-                      topic: notify/maintenance/$NAME/ota_keep_awake
-                      payload: ""
-                      retain: yes
                   - deep_sleep.enter:
 
 deep_sleep:
-  sleep_duration: $SLEEP_DURATION
+  sleep_duration: $UPDATE_INTERVAL
+  run_duration: 15min

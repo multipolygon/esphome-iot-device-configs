@@ -10,17 +10,13 @@ substitutions:
   ## PINS ##
   LIGHT_PIN: D1
   PIR_PIN: D2
+  PIR_ENABLED_PIN: D7
 
 esphome:
   name: $NAME
   platform: ESP8266
   board: d1_mini
   build_path: _builds/$NAME/
-
-globals:
-  - id: sensor_enabled
-    type: boolean
-    restore_value: yes
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
@@ -39,59 +35,68 @@ sensor:
 
 ## https://esphome.io/components/binary_sensor/index.html
 binary_sensor:
-  - platform: gpio
+  - id: pir_gpio
+    platform: gpio
     pin:
       number: $PIR_PIN
       mode: INPUT_PULLUP
-    name: $SHORT_PREFIX Motion
     device_class: motion
-    retain: false
-    filters:
-      delayed_off: 5min
     on_press:
-      - if:
-          condition:
-            lambda: return id(sensor_enabled);
-          then:
-            - light.turn_on: flood
-            - script.execute: sensor_timer
-      - mqtt.publish:
-          topic: security/motion/outside/$SHORT_PREFIX
-          payload: detected
-          retain: no
-      - if:
-          condition:
-            lambda: id(security_enabled).state == "YES";
-          then:
-            mqtt.publish:
-              topic: notify/critical/$SHORT_PREFIX/motion
-              payload: $SHORT_PREFIX motion detected!
-              retain: no
+      if:
+        condition:
+          switch.is_on: sensor_enabled
+        then:
+          script.execute: sensor_timer
+
+  - name: $SHORT_PREFIX Motion
+    platform: template
+    lambda: return id(pir_gpio).state;
+    filters:
+      delayed_off: 10min
+    on_press:
+      mqtt.publish:
+        topic: security/state/motion/outside/$SHORT_PREFIX
+        payload: detected
+        retain: no
+
+  - id: pir_security_alert
+    platform: template
+    lambda: return id(pir_gpio).state;
+    filters:
+      delayed_off: 30min
+    on_press:
+      if:
+        condition:
+          lambda: id(security_enabled).state == "YES";
+        then:
+          mqtt.publish:
+            topic: notify/critical/$SHORT_PREFIX/motion
+            payload: $SHORT_PREFIX motion detected!
+            retain: no
 
 output:
-  - id: d1_output
+  - id: light_output
     platform: gpio
-    pin: D1
+    pin: $LIGHT_PIN
 
 light:
   - id: flood
     platform: binary
     name: $SHORT_PREFIX Light
-    output: d1_output
+    output: light_output
 
 switch:
-  - platform: template
+  - id: sensor_enabled
     name: $SHORT_PREFIX Sensor
-    lambda: return id(sensor_enabled);
-    turn_on_action:
-      - lambda: id(sensor_enabled) = true;
-    turn_off_action:
-      - lambda: id(sensor_enabled) = false;
-      - light.turn_off: flood
+    platform: gpio
+    pin: $PIR_ENABLED_PIN
+    on_turn_off:
+      light.turn_off: flood
 
 script:
   - id: sensor_timer
     mode: restart
     then:
-      - delay: 10min
+      - light.turn_on: flood
+      - delay: 5min
       - light.turn_off: flood

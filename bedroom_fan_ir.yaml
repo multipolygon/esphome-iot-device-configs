@@ -1,0 +1,73 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: bedroom_fan_ir
+  PREFIX: Bedroom Fan IR
+  WIFI_AP_SSID: ESP-LRS
+  REBOOT_TIMEOUT: 15min
+  UPDATE_INTERVAL: 15min
+  LOG_LEVEL: WARN
+  ## PINS ##
+  I2C_1_PIN: D1
+  I2C_2_PIN: D2
+  PIR_MOTION_PIN: D3
+  IR_RECEIVER_PIN: D4
+  IR_TRANSMITTER_PIN: D5
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+  on_boot:
+    - delay: 1s
+    - remote_transmitter.transmit_raw:
+        code: [-100, 100, -100]
+
+i2c:
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+# <<: !include partial/lolin_d32_pro_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+remote_transmitter:
+  pin:
+    number: $IR_TRANSMITTER_PIN
+    inverted: no
+  carrier_duty_percent: 50%
+
+## https://www.esphome.io/components/remote_receiver.html
+remote_receiver:
+  id: ir_receiver
+  # dump: all
+  pin:
+    number: $IR_RECEIVER_PIN
+    inverted: yes
+
+switch:
+  ############### Sunbeam Fan ###############
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Power
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: "11011000000"
+        protocol: 4
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Speed
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: "11011000001"
+        protocol: 4
+
+  - platform: template
+    name: $PREFIX Sunbeam Fan Swing
+    turn_on_action:
+      remote_transmitter.transmit_rc_switch_raw:
+        code: "11011001000"
+        protocol: 4

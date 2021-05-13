@@ -49,12 +49,14 @@ text_sensor:
 
   - id: security_motion_outside
     platform: mqtt_subscribe
-    topic: security/motion/outside/#
+    topic: security/state/motion/outside/#
     on_value:
       then:
         if:
           condition:
-            lambda: return id(daytime_sensor).state == false && id(hour_sensor).state >= 0;
+            - lambda: return x == "detected";
+            - binary_sensor.is_off: daytime_sensor
+            - light.is_off: garden_lights
           then:
             script.execute: light_timer
 
@@ -219,7 +221,11 @@ time:
         minutes: 0
         hours: 10
         then:
-          - switch.turn_on: notify_rainfall_day_total
+          - if:
+              condition:
+                lambda: return id(rainfall_total) != 0.0;
+              then:
+                switch.turn_on: notify_rainfall_day_total
           - lambda: id(rainfall_total) = 0;
 
       - seconds: 0

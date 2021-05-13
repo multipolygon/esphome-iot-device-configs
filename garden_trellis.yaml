@@ -15,6 +15,7 @@ substitutions:
   ACTIVATED_LED_PIN: D6
   PUMP_SWITCH_PIN: D7
   ENABLE_SWITCH_PIN: D8
+  UPDATE_INTERVAL: 15min
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -53,6 +54,7 @@ sensor:
     temperature:
       id: temp_sensor
       name: $PREFIX Temperature
+      accuracy_decimals: 0
       filters:
         sliding_window_moving_average:
           window_size: 10
@@ -61,6 +63,7 @@ sensor:
     humidity:
       id: humid_sensor
       name: $PREFIX Humidity
+      accuracy_decimals: 0
       filters:
         sliding_window_moving_average:
           window_size: 10
