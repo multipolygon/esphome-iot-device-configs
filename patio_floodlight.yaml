@@ -5,7 +5,7 @@ substitutions:
   SHORT_PREFIX: Patio
   WIFI_AP_SSID: ESP-PFL
   REBOOT_TIMEOUT: 15min
-  LOG_LEVEL: INFO
+  LOG_LEVEL: WARN
   UPDATE_INTERVAL: 15min
   ## PINS ##
   LIGHT_PIN: D1
@@ -41,18 +41,24 @@ binary_sensor:
       number: $PIR_PIN
       mode: INPUT_PULLUP
     device_class: motion
+
+  - id: motion_light
+    platform: template
+    lambda: return id(pir_gpio).state && id(sensor_enabled).state;
+    device_class: motion
+    filters:
+      delayed_off: 5min
     on_press:
-      if:
-        condition:
-          switch.is_on: sensor_enabled
-        then:
-          script.execute: sensor_timer
+      light.turn_on: flood
+    on_release:
+      light.turn_off: flood
 
   - name: $SHORT_PREFIX Motion
     platform: template
     lambda: return id(pir_gpio).state;
+    device_class: motion
     filters:
-      delayed_off: 10min
+      delayed_off: 5min
     on_press:
       mqtt.publish:
         topic: security/state/motion/outside/$SHORT_PREFIX
@@ -61,18 +67,14 @@ binary_sensor:
 
   - id: pir_security_alert
     platform: template
-    lambda: return id(pir_gpio).state;
+    lambda: return id(pir_gpio).state && id(security_enabled).state == "YES";
     filters:
       delayed_off: 30min
     on_press:
-      if:
-        condition:
-          lambda: id(security_enabled).state == "YES";
-        then:
-          mqtt.publish:
-            topic: notify/critical/$SHORT_PREFIX/motion
-            payload: $SHORT_PREFIX motion detected!
-            retain: no
+      mqtt.publish:
+        topic: notify/warning/$SHORT_PREFIX/motion
+        payload: $SHORT_PREFIX motion detected!
+        retain: no
 
 output:
   - id: light_output
@@ -84,6 +86,7 @@ light:
     platform: binary
     name: $SHORT_PREFIX Light
     output: light_output
+    restore_mode: ALWAYS_OFF
 
 switch:
   - id: sensor_enabled
@@ -93,10 +96,5 @@ switch:
     on_turn_off:
       light.turn_off: flood
 
-script:
-  - id: sensor_timer
-    mode: restart
-    then:
-      - light.turn_on: flood
-      - delay: 5min
-      - light.turn_off: flood
+  - platform: restart
+    name: $SHORT_PREFIX Restart

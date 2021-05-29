@@ -39,11 +39,13 @@ sensor:
       name: $PREFIX Temperature
       retain: false
       accuracy_decimals: 0
+      expire_after: 1h
 
     humidity:
       name: $PREFIX Humidity
       retain: false
       accuracy_decimals: 0
+      expire_after: 1h
 
   - platform: bh1750
     id: bh1750_lux_sensor
@@ -52,6 +54,7 @@ sensor:
     measurement_time: 31
     update_interval: never
     retain: false
+    expire_after: 1h
 
 interval:
   - interval: 10s

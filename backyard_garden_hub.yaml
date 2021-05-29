@@ -4,7 +4,7 @@ substitutions:
   PREFIX: Backyard Garden Hub
   WIFI_AP_SSID: ESP-BGBH
   REBOOT_TIMEOUT: 120min
-  LOG_LEVEL: INFO
+  LOG_LEVEL: WARN
   UPDATE_INTERVAL: 15min
   # PINS:
   RAINGAUGE_PIN: D3
@@ -237,7 +237,7 @@ time:
 
       - seconds: 0
         minutes: 30
-        hours: /2
+        hours: /3
         then:
           if:
             condition:
