@@ -1,0 +1,49 @@
+## Barcode Reader Scanner TTY $20:
+## https://www.evawgib.com/Products/33.html
+## https://www.aliexpress.com/item/10000330913151.html
+
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: kitchen_barcode_scanner
+  PREFIX: Kitchen Barcode Scanner
+  WIFI_AP_SSID: ESP-KBS
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: DEBUG
+  UPDATE_INTERVAL: 15min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+  includes:
+    - uart_read_line_sensor.h
+
+logger:
+  level: $LOG_LEVEL
+  baud_rate: 0 #disable logging over uart
+
+## https://esphome.io/components/uart.html
+uart:
+  id: uart_bus
+  rx_pin: D2
+  baud_rate: 9600
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+
+mqtt:
+  <<: !include partial/mqtt_defaults.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  ## https://esphome.io/cookbook/uart_text_sensor.html
+  - platform: custom
+    lambda: |-
+      auto custom_sensor = new UartReadLineSensor(id(uart_bus));
+      App.register_component(custom_sensor);
+      return {custom_sensor};
+    text_sensors:
+      name: $PREFIX Text
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml

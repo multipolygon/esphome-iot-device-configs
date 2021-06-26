@@ -1,21 +1,47 @@
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: kitchen_pantry
   PREFIX: Kitchen Pantry
   WIFI_AP_SSID: ESP-KP
   REBOOT_TIMEOUT: 60min
   LOG_LEVEL: INFO
-  MQTT_PREFIX: !secret MQTT_PREFIX
+  UPDATE_INTERVAL: 15min
+  ## PINS ##
+  RELAY_PIN: D1
+  SCANNER_PIN: D2
+  MOTION_PIN: D3
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
+  includes:
+    - uart_read_line_sensor.h
+
+logger:
+  level: $LOG_LEVEL
+  baud_rate: 0 #disable logging over uart
+
+uart:
+  id: uart_bus
+  rx_pin: $SCANNER_PIN
+  baud_rate: 9600
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+
+mqtt:
+  <<: !include partial/mqtt_defaults.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
   - <<: !include partial/mqtt_scenes_for_living_room.yaml
+
+  - platform: custom
+    lambda: |-
+      auto custom_sensor = new UartReadLineSensor(id(uart_bus));
+      App.register_component(custom_sensor);
+      return {custom_sensor};
+    text_sensors:
+      name: $PREFIX Barcode
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -27,7 +53,7 @@ binary_sensor:
     device_class: motion
     platform: gpio
     pin:
-      number: D3 # D3 is default
+      number: $MOTION_PIN
       mode: INPUT
     on_press:
       then:
@@ -40,7 +66,7 @@ binary_sensor:
 output:
   - id: relay_output
     platform: gpio
-    pin: D1
+    pin: $RELAY_PIN
 
 light:
   - id: relay_light

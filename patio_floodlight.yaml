@@ -13,10 +13,7 @@ substitutions:
   PIR_ENABLED_PIN: D7
 
 esphome:
-  name: $NAME
-  platform: ESP8266
-  board: d1_mini
-  build_path: _builds/$NAME/
+  <<: !include partial/esphome_d1_mini.yaml
 
 <<: !include partial/wemos_d1_mini_status_led.yaml
 <<: !include partial/wifi.yaml

@@ -2,62 +2,68 @@
 
 <table>
 <tr>
+</tr>
+<tr>
 <td width="33%"><a href="./backyard_garden_hub.yaml"><img src="./img/backyard_garden_hub.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./backyard_garden_hub.yaml"><img src="./img/backyard_garden_hub~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./backyard_garden_hub.yaml"><img src="./img/backyard_garden_hub~3~L64.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
+<td width="33%"><a href="./barcode_scanner_reader_tty.yaml"><img src="./img/barcode_scanner_reader_tty.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./barcode_scanner_reader_tty.yaml"><img src="./img/barcode_scanner_reader_tty~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./beer_brew.yaml"><img src="./img/beer_brew.jpg" style="max-width: 200px; max-height: 200px;"></td>
+</tr>
+<tr>
 <td width="33%"><a href="./beer_brew.yaml"><img src="./img/beer_brew~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./camera_diymore.yaml"><img src="./img/camera_diymore.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./camera_diymore.yaml"><img src="./img/camera_diymore~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./camera_diymore.yaml"><img src="./img/camera_diymore~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./camera_diymore.yaml"><img src="./img/camera_diymore~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./camera_m5_xf.yaml"><img src="./img/camera_m5_xf.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./camera_m5_xf.yaml"><img src="./img/camera_m5_xf~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./camera_m5_xf.yaml"><img src="./img/camera_m5_xf~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./dam_water_level_alarm.yaml"><img src="./img/dam_water_level_alarm.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./dam_water_level_alarm.yaml"><img src="./img/dam_water_level_alarm~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./dam_water_level_alarm.yaml"><img src="./img/dam_water_level_alarm~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./dam_water_level_alarm.yaml"><img src="./img/dam_water_level_alarm~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis~5.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./garden_trellis.yaml"><img src="./img/garden_trellis~6.png" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./gps_module_oled_clock.yaml"><img src="./img/gps_module_oled_clock.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./gps_module_oled_clock.yaml"><img src="./img/gps_module_oled_clock.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./living_room_env_sensor.yaml"><img src="./img/living_room_env_sensor.png" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./living_room_env_sensor.yaml"><img src="./img/living_room_env_sensor~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./living_room_ir_sensor.yaml"><img src="./img/living_room_ir_sensor.png" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./living_room_ir_sensor.yaml"><img src="./img/living_room_ir_sensor.png" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./patio_floodlight.yaml"><img src="./img/patio_floodlight.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./slot_car_track.yaml"><img src="./img/slot_car_track.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./solar_hws_ctl.yaml"><img src="./img/solar_hws_ctl.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./solar_hws_ctl.yaml"><img src="./img/solar_hws_ctl.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./solar_hws_ctl.yaml"><img src="./img/solar_hws_ctl~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./solar_hws_ctl.yaml"><img src="./img/solar_hws_ctl~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./studio_psu.yaml"><img src="./img/studio_psu.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./studio_psu.yaml"><img src="./img/studio_psu.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./weather_oled.yaml"><img src="./img/weather_oled.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./wl_irrigation.yaml"><img src="./img/wl_irrigation.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./wl_irrigation.yaml"><img src="./img/wl_irrigation~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./wl_irrigation.yaml"><img src="./img/wl_irrigation~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./wl_irrigation.yaml"><img src="./img/wl_irrigation~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./wl_water_tank.yaml"><img src="./img/wl_water_tank.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./wl_water_tank.yaml"><img src="./img/wl_water_tank~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./wl_water_tank.yaml"><img src="./img/wl_water_tank~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./wl_water_tank.yaml"><img src="./img/wl_water_tank~3.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./wl_water_tank.yaml"><img src="./img/wl_water_tank~4.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </table>
