@@ -9,8 +9,8 @@
 <td width="33%"><a href="./backyard_garden_hub.yaml"><img src="./img/backyard_garden_hub~3~L64.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
-<td width="33%"><a href="./barcode_scanner_reader_tty.yaml"><img src="./img/barcode_scanner_reader_tty.jpg" style="max-width: 200px; max-height: 200px;"></td>
-<td width="33%"><a href="./barcode_scanner_reader_tty.yaml"><img src="./img/barcode_scanner_reader_tty~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./barcode_scanner_reader_evawgib_ev-x620_tty.yaml"><img src="./img/barcode_scanner_reader_evawgib_ev-x620_tty.jpg" style="max-width: 200px; max-height: 200px;"></td>
+<td width="33%"><a href="./barcode_scanner_reader_evawgib_ev-x620_tty.yaml"><img src="./img/barcode_scanner_reader_evawgib_ev-x620_tty~2.jpg" style="max-width: 200px; max-height: 200px;"></td>
 <td width="33%"><a href="./beer_brew.yaml"><img src="./img/beer_brew.jpg" style="max-width: 200px; max-height: 200px;"></td>
 </tr>
 <tr>
