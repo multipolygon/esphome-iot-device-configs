@@ -1,16 +1,18 @@
 ## eg: `pipenv run esphome -s ID 1 _____.yaml run`
 
 substitutions:
+  <<: !include secrets_ag.yaml
   NAME: camera_m5_$ID
   PREFIX: Camera M5 $ID
   WIFI_AP_SSID: ESP-M5-$ID
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
-
+  UPDATE_INTERVAL: 15min
+  ## SETTINGS ##
+  RES: SXGA
   # 800x600 - SVGA
   # 1024x768 - XGA
   # 1280x1024 - SXGA (maximum)
-  RES: SXGA
   FPS: "10"
   VFLIP: "no"
   HFLIP: "no"
@@ -21,6 +23,9 @@ esphome:
   board: nodemcu-32s
   build_path: _builds/$NAME/
 
+logger:
+  level: $LOG_LEVEL
+
 # status_led:
 #   pin:
 #     number: GPIO14
@@ -30,7 +35,7 @@ esphome:
 
 api:
   reboot_timeout: $REBOOT_TIMEOUT
-  password: !secret API_PASSWORD
+  password: $API_PASSWORD
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -104,7 +109,7 @@ output:
     inverted: true
 
 interval:
-  - interval: 10s
+  - interval: 60s
     then:
       - output.turn_on: red_led
       - delay: 1s

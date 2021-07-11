@@ -1,1 +1,1 @@
-pipenv run esphome $1 $2
+pipenv run esphome "$@"

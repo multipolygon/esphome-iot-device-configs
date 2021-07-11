@@ -42,6 +42,7 @@ text_sensor:
       return {custom_sensor};
     text_sensors:
       name: $PREFIX Barcode
+      retain: false
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
