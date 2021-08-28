@@ -4,10 +4,115 @@ substitutions:
   PREFIX: Bedroom
   WIFI_AP_SSID: ESP-BRES
   REBOOT_TIMEOUT: 0s
-  LOG_LEVEL: WARN
-  UPDATE_INTERVAL: 5min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 1s
+  ## PINS ##
+  I2C_1_PIN: D1
+  I2C_2_PIN: D2
+  PIR_MOTION_PIN: D3
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
 
-<<: !include partial/environment_sensor.yaml
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+i2c:
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - platform: sht3xd
+    id: sht3xd_sensor
+    address: 0x45
+    update_interval: $UPDATE_INTERVAL
+
+    temperature:
+      name: $PREFIX Temperature
+      id: temp_sensor
+      retain: false
+      accuracy_decimals: 0
+      expire_after: 1h
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+    humidity:
+      name: $PREFIX Humidity
+      id: humid_sensor
+      retain: false
+      accuracy_decimals: 0
+      expire_after: 1h
+      filters:
+        sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+
+  # https://esphome.io/components/sensor/sgp30.html
+  - platform: sgp30
+    address: 0x58
+    update_interval: $UPDATE_INTERVAL
+
+    eco2:
+      name: $PREFIX eCO2
+      id: eco2_sensor
+      accuracy_decimals: 1
+      filters:
+        sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+
+    tvoc:
+      name: $PREFIX TVOC
+      id: tvoc_sensor
+      accuracy_decimals: 1
+      filters:
+        sliding_window_moving_average:
+          window_size: 10
+          send_every: 10
+
+binary_sensor:
+  - name: $PREFIX Motion
+    id: motion_sensor
+    device_class: motion
+    platform: gpio
+    pin:
+      number: $PIR_MOTION_PIN
+      mode: INPUT
+    filters:
+      delayed_off: 10min
+
+font:
+  # https://www.dafont.com/andrew-tyler.d2526
+  - id: tiny_font
+    file: "fonts/pixelmix.ttf"
+    size: 8
+
+  - id: large_font
+    file: "fonts/DejaVuSansMono.ttf"
+    size: 24
+
+  - id: small_font
+    file: "fonts/DejaVuSansMono.ttf"
+    size: 16
+
+display:
+  - id: oled
+    platform: ssd1306_i2c
+    model: SSD1306 64x48
+    address: 0x3C
+    brightness: 100%
+    lambda: |-
+      if (id(motion_sensor).state) {
+        it.printf(-2, -4, id(large_font), TextAlign::TOP_LEFT, "%.0f", id(temp_sensor).state);
+        it.printf(it.get_width(), 0, id(tiny_font), TextAlign::TOP_RIGHT, "%%", id(humid_sensor).state);
+        it.printf(it.get_width() -7, -2, id(small_font), TextAlign::TOP_RIGHT, "%.0f", id(humid_sensor).state);
+        it.printf(0, it.get_height(), id(small_font), TextAlign::BOTTOM_LEFT, "%.0f", id(eco2_sensor).state);
+        it.printf(it.get_width(), it.get_height(), id(small_font), TextAlign::BOTTOM_RIGHT, "%.0f", id(tvoc_sensor).state);
+      }
