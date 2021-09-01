@@ -6,6 +6,13 @@ substitutions:
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 5min
+  ## STRINGS:
+  AWAKE: awake
+  SLEEPING: sleeping
+  FEEDING: feeding
+  DRY: dry
+  WET: wet
+  DIRTY: dirty
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -81,65 +88,65 @@ switch:
     platform: template
     name: Baby Sleeping
     icon: mdi:sleep
-    lambda: return id(state).state == "sleeping";
+    lambda: return id(state).state == "$SLEEPING";
     turn_on_action:
       text_sensor.template.publish:
         id: state
-        state: sleeping
+        state: $SLEEPING
     turn_off_action:
       text_sensor.template.publish:
         id: state
-        state: awake
+        state: $AWAKE
 
   - <<: *state_switch
     name: Baby Awake
     icon: mdi:baby-face
-    lambda: return id(state).state == "awake";
+    lambda: return id(state).state == "$AWAKE";
     turn_on_action:
       text_sensor.template.publish:
         id: state
-        state: awake
+        state: $AWAKE
 
   - <<: *state_switch
     name: Baby Feeding
     icon: mdi:baby-bottle
-    lambda: return id(state).state == "feeding";
+    lambda: return id(state).state == "$FEEDING";
     turn_on_action:
       text_sensor.template.publish:
         id: state
-        state: feeding
+        state: $FEEDING
 
   - &nappy_switch
     platform: template
     name: Dry Nappy
     icon: mdi:water-off
-    lambda: return id(nappy).state == "dry";
+    lambda: return id(nappy).state == "$DRY";
     turn_on_action:
       text_sensor.template.publish:
         id: nappy
-        state: dry
+        state: $DRY
     turn_off_action:
       text_sensor.template.publish:
         id: nappy
-        state: dray
+        state: $DRY
 
   - <<: *nappy_switch
     name: Wet Nappy
     icon: mdi:water
-    lambda: return id(nappy).state == "wet";
+    lambda: return id(nappy).state == "$WET";
     turn_on_action:
       text_sensor.template.publish:
         id: nappy
-        state: wet
+        state: $WET
 
   - <<: *nappy_switch
     name: Dirty Nappy
     icon: mdi:emoticon-poop
-    lambda: return id(nappy).state == "dirty";
+    lambda: return id(nappy).state == "$DIRTY";
     turn_on_action:
       text_sensor.template.publish:
         id: nappy
-        state: dirty
+        state: $DIRTY
 
 font:
   - id: large_font

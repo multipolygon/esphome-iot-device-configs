@@ -142,10 +142,22 @@ remote_receiver:
     inverted: yes
 
 climate:
-  - platform: daikin
-    name: $PREFIX Daikin AC
+  ## https://www.esphome.io/components/climate/ir_climate.html?highlight=daikin
+  - &daikin
+    platform: daikin
+    name: $PREFIX Inverter
     receiver_id: ir_receiver
     sensor: temperature_sensor
+    supports_cool: true
+    supports_heat: true
+
+  - <<: *daikin
+    name: $PREFIX Heater
+    supports_cool: false
+
+  - <<: *daikin
+    name: $PREFIX Air Conditioner
+    supports_heat: false
 
 switch:
   ############### Air Filter ###############
