@@ -1,0 +1,166 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: baby_logger
+  PREFIX: Baby
+  WIFI_AP_SSID: ESP-BL
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 5min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/wemos_d1_mini_status_led.yaml
+<<: !include partial/wifi.yaml
+<<: !include partial/mqtt.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - platform: template
+    name: Baby State
+    id: state
+    icon: mdi:baby-face
+
+  - platform: template
+    name: Baby Nappy
+    id: nappy
+    icon: mdi:emoticon-poop
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  ## https://esphome.io/components/sensor/template.html
+  - platform: template
+    name: Baby Formula Sensor
+    id: baby_formula_fake_temp
+    lambda: return id(baby_formula).target_temperature;
+    update_interval: 1s
+    unit_of_measurement: ml
+    icon: mdi:baby-bottle
+
+  - platform: template
+    name: Baby Temperature Sensor
+    id: baby_temperature_fake_temp
+    lambda: return id(baby_temperature).target_temperature;
+    update_interval: 1s
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+
+## https://www.esphome.io/components/climate/index.html
+climate:
+  ## https://www.esphome.io/components/climate/thermostat.html
+  - &thermostat
+    platform: thermostat
+    name: Baby Formula
+    id: baby_formula
+    sensor: baby_formula_fake_temp
+    default_target_temperature_low: 0 °C
+    heat_action:
+      - delay: 1ms
+    idle_action:
+      - delay: 1ms
+    visual:
+      min_temperature: 0 °C
+      max_temperature: 1000 °C
+      temperature_step: 1 °C
+
+  - <<: *thermostat
+    name: Baby Temperature
+    id: baby_temperature
+    sensor: baby_temperature_fake_temp
+    visual:
+      min_temperature: 0 °C
+      max_temperature: 100 °C
+      temperature_step: 0.1 °C
+
+switch:
+  ## https://esphome.io/components/switch/template.html
+  - &state_switch
+    platform: template
+    name: Baby Sleeping
+    icon: mdi:sleep
+    lambda: return id(state).state == "sleeping";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: sleeping
+    turn_off_action:
+      text_sensor.template.publish:
+        id: state
+        state: awake
+
+  - <<: *state_switch
+    name: Baby Awake
+    icon: mdi:baby-face
+    lambda: return id(state).state == "awake";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: awake
+
+  - <<: *state_switch
+    name: Baby Feeding
+    icon: mdi:baby-bottle
+    lambda: return id(state).state == "feeding";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: feeding
+
+  - &nappy_switch
+    platform: template
+    name: Dry Nappy
+    icon: mdi:water-off
+    lambda: return id(nappy).state == "dry";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: nappy
+        state: dry
+    turn_off_action:
+      text_sensor.template.publish:
+        id: nappy
+        state: dray
+
+  - <<: *nappy_switch
+    name: Wet Nappy
+    icon: mdi:water
+    lambda: return id(nappy).state == "wet";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: nappy
+        state: wet
+
+  - <<: *nappy_switch
+    name: Dirty Nappy
+    icon: mdi:emoticon-poop
+    lambda: return id(nappy).state == "dirty";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: nappy
+        state: dirty
+
+font:
+  - id: large_font
+    file: "fonts/DejaVuSansMono.ttf"
+    size: 14
+
+i2c:
+
+## https://esphome.io/components/display/index.html
+display:
+  ## https://esphome.io/components/display/ssd1306.html
+  - id: oled
+    platform: ssd1306_i2c
+    model: SSD1306 64x48
+    address: 0x3C
+    brightness: 100%
+    update_interval: 1s
+    lambda: |-
+      if (id(state).has_state()) {
+        it.printf(0, 0, id(large_font), TextAlign::TOP_LEFT, id(state).state.c_str());
+      }
+      if (id(nappy).has_state()) {
+        it.printf(0, it.get_height(), id(large_font), TextAlign::BOTTOM_LEFT, id(nappy).state.c_str());
+      }

@@ -5,7 +5,7 @@ substitutions:
   WIFI_AP_SSID: ESP-BRES
   REBOOT_TIMEOUT: 0s
   LOG_LEVEL: INFO
-  UPDATE_INTERVAL: 1s
+  UPDATE_INTERVAL: 5min
   ## PINS ##
   I2C_1_PIN: D1
   I2C_2_PIN: D2
@@ -30,13 +30,13 @@ sensor:
   - platform: sht3xd
     id: sht3xd_sensor
     address: 0x45
-    update_interval: $UPDATE_INTERVAL
+    update_interval: 1s
 
     temperature:
       name: $PREFIX Temperature
       id: temp_sensor
       retain: false
-      accuracy_decimals: 0
+      accuracy_decimals: 2
       expire_after: 1h
       filters:
         sliding_window_moving_average:
@@ -47,7 +47,7 @@ sensor:
       name: $PREFIX Humidity
       id: humid_sensor
       retain: false
-      accuracy_decimals: 0
+      accuracy_decimals: 2
       expire_after: 1h
       filters:
         sliding_window_moving_average:
@@ -57,12 +57,15 @@ sensor:
   # https://esphome.io/components/sensor/sgp30.html
   - platform: sgp30
     address: 0x58
-    update_interval: $UPDATE_INTERVAL
+    update_interval: 1s
+    compensation:
+      temperature_source: temp_sensor
+      humidity_source: humid_sensor
 
     eco2:
       name: $PREFIX eCO2
       id: eco2_sensor
-      accuracy_decimals: 1
+      accuracy_decimals: 2
       filters:
         sliding_window_moving_average:
           window_size: 60
@@ -71,7 +74,7 @@ sensor:
     tvoc:
       name: $PREFIX TVOC
       id: tvoc_sensor
-      accuracy_decimals: 1
+      accuracy_decimals: 2
       filters:
         sliding_window_moving_average:
           window_size: 10
@@ -86,33 +89,47 @@ binary_sensor:
       number: $PIR_MOTION_PIN
       mode: INPUT
     filters:
-      delayed_off: 10min
+      delayed_off: 1min
+    on_press:
+      then:
+        lambda: id(oled).set_brightness(1.0);
+    on_release:
+      then:
+        lambda: id(oled).set_brightness(0);
 
 font:
-  # https://www.dafont.com/andrew-tyler.d2526
+  ## https://www.dafont.com/andrew-tyler.d2526
   - id: tiny_font
     file: "fonts/pixelmix.ttf"
     size: 8
 
-  - id: large_font
-    file: "fonts/DejaVuSansMono.ttf"
-    size: 24
-
   - id: small_font
     file: "fonts/DejaVuSansMono.ttf"
-    size: 16
+    size: 14
 
+  - id: large_font
+    file: "fonts/DejaVuSansMono.ttf"
+    size: 30
+
+## https://esphome.io/components/display/index.html
 display:
+  ## https://esphome.io/components/display/ssd1306.html
   - id: oled
     platform: ssd1306_i2c
     model: SSD1306 64x48
     address: 0x3C
-    brightness: 100%
+    brightness: 0%
     lambda: |-
-      if (id(motion_sensor).state) {
-        it.printf(-2, -4, id(large_font), TextAlign::TOP_LEFT, "%.0f", id(temp_sensor).state);
-        it.printf(it.get_width(), 0, id(tiny_font), TextAlign::TOP_RIGHT, "%%", id(humid_sensor).state);
-        it.printf(it.get_width() -7, -2, id(small_font), TextAlign::TOP_RIGHT, "%.0f", id(humid_sensor).state);
-        it.printf(0, it.get_height(), id(small_font), TextAlign::BOTTOM_LEFT, "%.0f", id(eco2_sensor).state);
-        it.printf(it.get_width(), it.get_height(), id(small_font), TextAlign::BOTTOM_RIGHT, "%.0f", id(tvoc_sensor).state);
-      }
+      // it.printf(it.get_width() / 2 - 5, -3, id(tiny_font), TextAlign::TOP_LEFT, "o");
+      // it.printf(it.get_width() / 2 + 1, 2, id(tiny_font), TextAlign::TOP_LEFT, "C");
+      it.printf(it.get_width() / 2 -20, 26, id(small_font), TextAlign::BOTTOM_LEFT, "%2.1f", id(temp_sensor).state);
+      it.filled_rectangle(0, 0, it.get_width() / 2 + 1, 26, COLOR_OFF);
+      it.printf(-2, -4, id(large_font), TextAlign::TOP_LEFT, "%.0f", floor(id(temp_sensor).state));
+
+      it.printf(it.get_width(), 0, id(tiny_font), TextAlign::TOP_RIGHT, "%.0f%%", id(humid_sensor).state);
+
+      it.printf(0, it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_LEFT, "CO2:");
+      it.printf(0, it.get_height() +4, id(small_font), TextAlign::BOTTOM_LEFT, "%.0f", id(eco2_sensor).state);
+
+      it.printf(it.get_width(), it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_RIGHT, "TVOC:");
+      it.printf(it.get_width(), it.get_height() +4, id(small_font), TextAlign::BOTTOM_RIGHT, "%.0f", id(tvoc_sensor).state);

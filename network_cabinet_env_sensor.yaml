@@ -1,0 +1,13 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: network_cabinet_env_sensor
+  PREFIX: Network Cabinet
+  WIFI_AP_SSID: ESP-NCES
+  REBOOT_TIMEOUT: 0s
+  LOG_LEVEL: WARN
+  UPDATE_INTERVAL: 5min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/environment_sensor.yaml
