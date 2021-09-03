@@ -36,7 +36,7 @@ sensor:
       name: $PREFIX Temperature
       id: temp_sensor
       retain: false
-      accuracy_decimals: 2
+      accuracy_decimals: 0
       expire_after: 1h
       filters:
         sliding_window_moving_average:
@@ -47,7 +47,7 @@ sensor:
       name: $PREFIX Humidity
       id: humid_sensor
       retain: false
-      accuracy_decimals: 2
+      accuracy_decimals: 0
       expire_after: 1h
       filters:
         sliding_window_moving_average:
@@ -126,10 +126,12 @@ display:
       it.filled_rectangle(0, 0, it.get_width() / 2 + 1, 26, COLOR_OFF);
       it.printf(-2, -4, id(large_font), TextAlign::TOP_LEFT, "%.0f", floor(id(temp_sensor).state));
 
-      it.printf(it.get_width(), 0, id(tiny_font), TextAlign::TOP_RIGHT, "%.0f%%", id(humid_sensor).state);
+      if (id(motion_sensor).state) {
+        it.printf(it.get_width(), 0, id(tiny_font), TextAlign::TOP_RIGHT, "%.0f%%", id(humid_sensor).state);
 
-      it.printf(0, it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_LEFT, "CO2:");
-      it.printf(0, it.get_height() +4, id(small_font), TextAlign::BOTTOM_LEFT, "%.0f", id(eco2_sensor).state);
+        it.printf(0, it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_LEFT, "CO2:");
+        it.printf(0, it.get_height() +4, id(small_font), TextAlign::BOTTOM_LEFT, "%.0f", id(eco2_sensor).state);
 
-      it.printf(it.get_width(), it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_RIGHT, "TVOC:");
-      it.printf(it.get_width(), it.get_height() +4, id(small_font), TextAlign::BOTTOM_RIGHT, "%.0f", id(tvoc_sensor).state);
+        it.printf(it.get_width(), it.get_height() -12, id(tiny_font), TextAlign::BOTTOM_RIGHT, "TVOC:");
+        it.printf(it.get_width(), it.get_height() +4, id(small_font), TextAlign::BOTTOM_RIGHT, "%.0f", id(tvoc_sensor).state);
+      }

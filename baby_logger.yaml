@@ -7,6 +7,7 @@ substitutions:
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 5min
   ## STRINGS:
+  NONE: "-"
   AWAKE: awake
   SLEEPING: sleeping
   FEEDING: feeding
@@ -24,15 +25,18 @@ esphome:
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
 
+  ## https://esphome.io/components/text_sensor/template.html
   - platform: template
     name: Baby State
     id: state
     icon: mdi:baby-face
+    retain: true
 
   - platform: template
     name: Baby Nappy
     id: nappy
     icon: mdi:emoticon-poop
+    retain: true
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -40,20 +44,31 @@ sensor:
 
   ## https://esphome.io/components/sensor/template.html
   - platform: template
-    name: Baby Formula Sensor
+    name: Baby Expressed Log
+    id: baby_expressed_fake_temp
+    lambda: return id(baby_expressed).target_temperature;
+    update_interval: 1s
+    unit_of_measurement: ml
+    icon: mdi:baby-bottle-outline
+    retain: true
+
+  - platform: template
+    name: Baby Formula Log
     id: baby_formula_fake_temp
     lambda: return id(baby_formula).target_temperature;
     update_interval: 1s
     unit_of_measurement: ml
     icon: mdi:baby-bottle
+    retain: true
 
   - platform: template
-    name: Baby Temperature Sensor
+    name: Baby Temperature Log
     id: baby_temperature_fake_temp
     lambda: return id(baby_temperature).target_temperature;
     update_interval: 1s
     unit_of_measurement: °C
     icon: mdi:thermometer-lines
+    retain: true
 
 ## https://www.esphome.io/components/climate/index.html
 climate:
@@ -63,29 +78,38 @@ climate:
     name: Baby Formula
     id: baby_formula
     sensor: baby_formula_fake_temp
-    default_target_temperature_low: 0 °C
+    default_target_temperature_low: 0
+    retain: true
     heat_action:
       - delay: 1ms
     idle_action:
       - delay: 1ms
     visual:
-      min_temperature: 0 °C
-      max_temperature: 1000 °C
-      temperature_step: 1 °C
+      min_temperature: 0
+      max_temperature: 100
+      temperature_step: 1
+
+  - <<: *thermostat
+    name: Baby Expressed
+    id: baby_expressed
+    sensor: baby_expressed_fake_temp
 
   - <<: *thermostat
     name: Baby Temperature
     id: baby_temperature
     sensor: baby_temperature_fake_temp
     visual:
-      min_temperature: 0 °C
-      max_temperature: 100 °C
-      temperature_step: 0.1 °C
+      min_temperature: 35
+      max_temperature: 40
+      temperature_step: 0.1
 
 switch:
+  ## ACTIVITY ##
+
   ## https://esphome.io/components/switch/template.html
   - &state_switch
     platform: template
+    restore_state: true
     name: Baby Sleeping
     icon: mdi:sleep
     lambda: return id(state).state == "$SLEEPING";
@@ -94,9 +118,13 @@ switch:
         id: state
         state: $SLEEPING
     turn_off_action:
-      text_sensor.template.publish:
-        id: state
-        state: $AWAKE
+      - text_sensor.template.publish:
+          id: state
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $SLEEPING
 
   - <<: *state_switch
     name: Baby Awake
@@ -106,6 +134,14 @@ switch:
       text_sensor.template.publish:
         id: state
         state: $AWAKE
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: state
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $AWAKE
 
   - <<: *state_switch
     name: Baby Feeding
@@ -115,6 +151,16 @@ switch:
       text_sensor.template.publish:
         id: state
         state: $FEEDING
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: state
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $FEEDING
+
+  ## NAPPY ##
 
   - &nappy_switch
     platform: template
@@ -126,9 +172,13 @@ switch:
         id: nappy
         state: $DRY
     turn_off_action:
-      text_sensor.template.publish:
-        id: nappy
-        state: $DRY
+      - text_sensor.template.publish:
+          id: nappy
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: nappy
+          state: $DRY
 
   - <<: *nappy_switch
     name: Wet Nappy
@@ -138,6 +188,14 @@ switch:
       text_sensor.template.publish:
         id: nappy
         state: $WET
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: nappy
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: nappy
+          state: $WET
 
   - <<: *nappy_switch
     name: Dirty Nappy
@@ -147,6 +205,14 @@ switch:
       text_sensor.template.publish:
         id: nappy
         state: $DIRTY
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: nappy
+          state: $NONE
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: nappy
+          state: $DIRTY
 
 font:
   - id: large_font
@@ -162,7 +228,7 @@ display:
     platform: ssd1306_i2c
     model: SSD1306 64x48
     address: 0x3C
-    brightness: 100%
+    brightness: 0%
     update_interval: 1s
     lambda: |-
       if (id(state).has_state()) {
