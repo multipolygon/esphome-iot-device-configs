@@ -14,6 +14,13 @@ substitutions:
   DRY: dry
   WET: wet
   DIRTY: dirty
+  ## ICONS:
+  AWAKE_ICON: "\U000F069C"
+  SLEEPING_ICON: "\U000F04B2"
+  FEEDING_ICON: "\U000F0F39"
+  DRY_ICON: "\U000F058D"
+  WET_ICON: "\U000F058C"
+  DIRTY_ICON: "\U000F01F7"
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -215,9 +222,16 @@ switch:
           state: $DIRTY
 
 font:
-  - id: large_font
-    file: "fonts/DejaVuSansMono.ttf"
-    size: 14
+  - file: fonts/materialdesignicons-webfont.ttf
+    id: icon_font
+    size: 32
+    glyphs:
+      - "$AWAKE_ICON"
+      - "$SLEEPING_ICON"
+      - "$FEEDING_ICON"
+      - "$DRY_ICON"
+      - "$WET_ICON"
+      - "$DIRTY_ICON"
 
 i2c:
 
@@ -231,9 +245,13 @@ display:
     brightness: 0%
     update_interval: 1s
     lambda: |-
-      if (id(state).has_state()) {
-        it.printf(0, 0, id(large_font), TextAlign::TOP_LEFT, id(state).state.c_str());
-      }
-      if (id(nappy).has_state()) {
-        it.printf(0, it.get_height(), id(large_font), TextAlign::BOTTOM_LEFT, id(nappy).state.c_str());
-      }
+      // if (id(state).has_state()) { it.printf(0, 0, id(tiny_font), TextAlign::TOP_LEFT, id(state).state.c_str()); }
+      // if (id(nappy).has_state()) { it.printf(0, it.get_height(), id(tiny_font), TextAlign::TOP_RIGHT, id(nappy).state.c_str()); }
+
+      if (id(state).state == "$AWAKE") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$AWAKE_ICON"); }
+      if (id(state).state == "$SLEEPING") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$SLEEPING_ICON"); }
+      if (id(state).state == "$FEEDING") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$FEEDING_ICON"); }
+
+      if (id(nappy).state == "$DRY") { it.printf(it.get_width(), 0, id(icon_font), TextAlign::TOP_RIGHT, "$DRY_ICON"); }
+      if (id(nappy).state == "$WET") { it.printf(it.get_width(), 0, id(icon_font), TextAlign::TOP_RIGHT, "$WET_ICON"); }
+      if (id(nappy).state == "$DIRTY") { it.printf(it.get_width(), 0, id(icon_font), TextAlign::TOP_RIGHT, "$DIRTY_ICON"); }
