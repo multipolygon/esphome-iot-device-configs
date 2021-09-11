@@ -1,11 +1,10 @@
 # https://esphome.io/components/wifi.html
 id: wifi_id
-networks:
-  - ssid: $WIFI_SSID
-    password: $WIFI_PASSWORD
-  - ssid: $WIFI_SSID_EXT
-    password: $WIFI_PASSWORD
+ssid: $WIFI_SSID
+password: $WIFI_PASSWORD
+fast_connect: true
 reboot_timeout: $REBOOT_TIMEOUT
 ap:
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ssid: $WIFI_AP_SSID
   password: $WIFI_AP_PASSWORD

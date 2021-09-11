@@ -1,0 +1,22 @@
+# https://esphome.io/components/logger.html
+logger:
+  level: $LOG_LEVEL
+
+# https://esphome.io/components/status_led.html
+status_led:
+  <<: !include wemos_d1_mini_status_led.yaml
+
+# https://esphome.io/components/wifi.html
+wifi:
+  <<: !include wifi_single.yaml
+
+# https://esphome.io/components/captive_portal.html
+captive_portal:
+
+# https://esphome.io/components/ota.html
+ota:
+  password: $OTA_PASSWORD
+
+# https://esphome.io/components/mqtt.html
+mqtt:
+  <<: !include mqtt_defaults.yaml

@@ -16,3 +16,6 @@
 *.ttf
 cameras.sh
 motioneyeos
+node_modules
+package.*
+package-lock.json

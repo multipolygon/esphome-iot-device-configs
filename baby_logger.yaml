@@ -1,49 +1,61 @@
 substitutions:
   <<: !include secrets_ag.yaml
+
   NAME: baby_logger
   PREFIX: Baby
   WIFI_AP_SSID: ESP-BL
   REBOOT_TIMEOUT: 15min
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 5min
-  ## STRINGS:
-  NONE: "-"
+
+  ## STATES:
+  BLANK: ""
   AWAKE: awake
   SLEEPING: sleeping
   FEEDING: feeding
+  WALK: walk
+  BATH: bath
+
+  ## NAPPY:
   DRY: dry
   WET: wet
   DIRTY: dirty
+
   ## ICONS:
-  AWAKE_ICON: "\U000F069C"
-  SLEEPING_ICON: "\U000F04B2"
-  FEEDING_ICON: "\U000F0F39"
-  DRY_ICON: "\U000F058D"
-  WET_ICON: "\U000F058C"
-  DIRTY_ICON: "\U000F01F7"
+  AWAKE_MDI: emoticon-lol-outline
+  AWAKE_ICON: "󰚜" # "\U000F069C"
+  SLEEPING_MDI: sleep
+  SLEEPING_ICON: "󰒲" # "\U000F04B2"
+  FEEDING_MDI: baby-bottle
+  FEEDING_ICON: "󰼹" # "\U000F0F39"
+  WALK_MDI: baby-carriage # or baby-buggy
+  WALK_ICON: "󰚏" # "\U000F068F"
+  BATH_MDI: shower
+  BATH_ICON: "󰦠" # "\U000F09A0"
+
+  DRY_MDI: water-off
+  DRY_ICON: "󰖍" # "\U000F058D"
+  WET_MDI: water
+  WET_ICON: "󰖌" # "\U000F058C"
+  DIRTY_MDI: emoticon-poop
+  DIRTY_ICON: "󰇷" # "\U000F01F7"
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
 
-<<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
-text_sensor:
-  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
-
-  ## https://esphome.io/components/text_sensor/template.html
-  - platform: template
-    name: Baby State
-    id: state
-    icon: mdi:baby-face
-    retain: true
-
-  - platform: template
-    name: Baby Nappy
-    id: nappy
-    icon: mdi:emoticon-poop
-    retain: true
+## https://esphome.io/guides/automations.html#global-variables
+globals:
+  - id: expressed
+    type: float
+    restore_value: yes
+  - id: formula
+    type: float
+    restore_value: yes
+  - id: temperature
+    type: float
+    restore_value: yes
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -52,8 +64,8 @@ sensor:
   ## https://esphome.io/components/sensor/template.html
   - platform: template
     name: Baby Expressed Log
-    id: baby_expressed_fake_temp
-    lambda: return id(baby_expressed).target_temperature;
+    id: expressed_sensor
+    lambda: return id(expressed);
     update_interval: 1s
     unit_of_measurement: ml
     icon: mdi:baby-bottle-outline
@@ -61,8 +73,8 @@ sensor:
 
   - platform: template
     name: Baby Formula Log
-    id: baby_formula_fake_temp
-    lambda: return id(baby_formula).target_temperature;
+    id: formula_sensor
+    lambda: return id(formula);
     update_interval: 1s
     unit_of_measurement: ml
     icon: mdi:baby-bottle
@@ -70,21 +82,31 @@ sensor:
 
   - platform: template
     name: Baby Temperature Log
-    id: baby_temperature_fake_temp
-    lambda: return id(baby_temperature).target_temperature;
+    id: temperature_sensor
+    lambda: return id(temperature);
     update_interval: 1s
     unit_of_measurement: °C
     icon: mdi:thermometer-lines
     retain: true
 
+## https://esphome.io/components/cover/template.html
+# cover:
+#   - platform: template
+#     name: Baby Cover
+#     device_class: window
+#     has_position: true
+#     lambda: return id(expressed_value);
+#     position_action:
+#       then:
+#         lambda: id(expressed_value) = pos;
 ## https://www.esphome.io/components/climate/index.html
 climate:
   ## https://www.esphome.io/components/climate/thermostat.html
   - &thermostat
     platform: thermostat
     name: Baby Formula
-    id: baby_formula
-    sensor: baby_formula_fake_temp
+    id: formula_thermostat
+    sensor: formula_sensor
     default_target_temperature_low: 0
     retain: true
     heat_action:
@@ -95,47 +117,58 @@ climate:
       min_temperature: 0
       max_temperature: 100
       temperature_step: 1
+    min_idle_time: 1s
+    min_heating_off_time: 1s
+    min_heating_run_time: 1s
+    target_temperature_change_action:
+      then:
+        lambda: id(formula) = id(formula_thermostat).target_temperature * 10;
 
   - <<: *thermostat
     name: Baby Expressed
-    id: baby_expressed
-    sensor: baby_expressed_fake_temp
+    id: expressed_thermostat
+    sensor: expressed_sensor
+    target_temperature_change_action:
+      then:
+        lambda: id(expressed) = id(expressed_thermostat).target_temperature * 10;
 
   - <<: *thermostat
     name: Baby Temperature
-    id: baby_temperature
-    sensor: baby_temperature_fake_temp
+    id: temperature_thermostat
+    sensor: temperature_sensor
     visual:
-      min_temperature: 35
+      min_temperature: 0
       max_temperature: 40
       temperature_step: 0.1
+    target_temperature_change_action:
+      then:
+        lambda: id(temperature) = id(temperature_thermostat).target_temperature;
 
+## ACTIVITY ##
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  ## https://esphome.io/components/text_sensor/template.html
+  - platform: template
+    name: Baby State
+    id: state
+    icon: mdi:emoticon-lol-outline
+    retain: true
+
+  - platform: template
+    name: Baby Nappy
+    id: nappy
+    icon: mdi:emoticon-poop
+    retain: true
+
+## https://esphome.io/components/switch/template.html
 switch:
-  ## ACTIVITY ##
-
-  ## https://esphome.io/components/switch/template.html
-  - &state_switch
-    platform: template
-    restore_state: true
-    name: Baby Sleeping
-    icon: mdi:sleep
-    lambda: return id(state).state == "$SLEEPING";
-    turn_on_action:
-      text_sensor.template.publish:
-        id: state
-        state: $SLEEPING
-    turn_off_action:
-      - text_sensor.template.publish:
-          id: state
-          state: $NONE
-      - delay: 500ms
-      - text_sensor.template.publish:
-          id: state
-          state: $SLEEPING
-
-  - <<: *state_switch
+  # Auto generated:
+  - platform: template
+    id: awake_state_mode_switch
     name: Baby Awake
-    icon: mdi:baby-face
+    icon: mdi:$AWAKE_MDI
+    restore_state: true
     lambda: return id(state).state == "$AWAKE";
     turn_on_action:
       text_sensor.template.publish:
@@ -144,15 +177,36 @@ switch:
     turn_off_action:
       - text_sensor.template.publish:
           id: state
-          state: $NONE
+          state: $BLANK
       - delay: 500ms
       - text_sensor.template.publish:
           id: state
           state: $AWAKE
-
-  - <<: *state_switch
+  # Auto generated:
+  - platform: template
+    id: sleeping_state_mode_switch
+    name: Baby Sleeping
+    icon: mdi:$SLEEPING_MDI
+    restore_state: true
+    lambda: return id(state).state == "$SLEEPING";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: $SLEEPING
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: state
+          state: $BLANK
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $SLEEPING
+  # Auto generated:
+  - platform: template
+    id: feeding_state_mode_switch
     name: Baby Feeding
-    icon: mdi:baby-bottle
+    icon: mdi:$FEEDING_MDI
+    restore_state: true
     lambda: return id(state).state == "$FEEDING";
     turn_on_action:
       text_sensor.template.publish:
@@ -161,18 +215,55 @@ switch:
     turn_off_action:
       - text_sensor.template.publish:
           id: state
-          state: $NONE
+          state: $BLANK
       - delay: 500ms
       - text_sensor.template.publish:
           id: state
           state: $FEEDING
-
-  ## NAPPY ##
-
-  - &nappy_switch
-    platform: template
+  # Auto generated:
+  - platform: template
+    id: walk_state_mode_switch
+    name: Baby Walk
+    icon: mdi:$WALK_MDI
+    restore_state: true
+    lambda: return id(state).state == "$WALK";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: $WALK
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: state
+          state: $BLANK
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $WALK
+  # Auto generated:
+  - platform: template
+    id: bath_state_mode_switch
+    name: Baby Bath
+    icon: mdi:$BATH_MDI
+    restore_state: true
+    lambda: return id(state).state == "$BATH";
+    turn_on_action:
+      text_sensor.template.publish:
+        id: state
+        state: $BATH
+    turn_off_action:
+      - text_sensor.template.publish:
+          id: state
+          state: $BLANK
+      - delay: 500ms
+      - text_sensor.template.publish:
+          id: state
+          state: $BATH
+  # Auto generated:
+  - platform: template
+    id: dry_nappy_mode_switch
     name: Dry Nappy
-    icon: mdi:water-off
+    icon: mdi:$DRY_MDI
+    restore_state: true
     lambda: return id(nappy).state == "$DRY";
     turn_on_action:
       text_sensor.template.publish:
@@ -181,15 +272,17 @@ switch:
     turn_off_action:
       - text_sensor.template.publish:
           id: nappy
-          state: $NONE
+          state: $BLANK
       - delay: 500ms
       - text_sensor.template.publish:
           id: nappy
           state: $DRY
-
-  - <<: *nappy_switch
+  # Auto generated:
+  - platform: template
+    id: wet_nappy_mode_switch
     name: Wet Nappy
-    icon: mdi:water
+    icon: mdi:$WET_MDI
+    restore_state: true
     lambda: return id(nappy).state == "$WET";
     turn_on_action:
       text_sensor.template.publish:
@@ -198,15 +291,17 @@ switch:
     turn_off_action:
       - text_sensor.template.publish:
           id: nappy
-          state: $NONE
+          state: $BLANK
       - delay: 500ms
       - text_sensor.template.publish:
           id: nappy
           state: $WET
-
-  - <<: *nappy_switch
+  # Auto generated:
+  - platform: template
+    id: dirty_nappy_mode_switch
     name: Dirty Nappy
-    icon: mdi:emoticon-poop
+    icon: mdi:$DIRTY_MDI
+    restore_state: true
     lambda: return id(nappy).state == "$DIRTY";
     turn_on_action:
       text_sensor.template.publish:
@@ -215,11 +310,24 @@ switch:
     turn_off_action:
       - text_sensor.template.publish:
           id: nappy
-          state: $NONE
+          state: $BLANK
       - delay: 500ms
       - text_sensor.template.publish:
           id: nappy
           state: $DIRTY
+
+binary_sensor:
+  - platform: template
+    id: feed_alert
+    lambda: return id(state).state == "$FEEDING";
+    filters:
+      delayed_off: 3h
+    on_release:
+      then:
+        mqtt.publish:
+          topic: notify/warning/$NAME/feeding_time
+          payload: Baby fed 3h ago!
+          retain: no
 
 font:
   - file: fonts/materialdesignicons-webfont.ttf
@@ -229,11 +337,13 @@ font:
       - "$AWAKE_ICON"
       - "$SLEEPING_ICON"
       - "$FEEDING_ICON"
+      - "$WALK_ICON"
+      - "$BATH_ICON"
       - "$DRY_ICON"
       - "$WET_ICON"
       - "$DIRTY_ICON"
 
-i2c:
+i2c: null
 
 ## https://esphome.io/components/display/index.html
 display:
@@ -241,7 +351,7 @@ display:
   - id: oled
     platform: ssd1306_i2c
     model: SSD1306 64x48
-    address: 0x3C
+    address: 0x3c
     brightness: 0%
     update_interval: 1s
     lambda: |-
@@ -251,6 +361,8 @@ display:
       if (id(state).state == "$AWAKE") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$AWAKE_ICON"); }
       if (id(state).state == "$SLEEPING") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$SLEEPING_ICON"); }
       if (id(state).state == "$FEEDING") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$FEEDING_ICON"); }
+      if (id(state).state == "$WALK") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$WALK_ICON"); }
+      if (id(state).state == "$BATH") { it.printf(0, 0, id(icon_font), TextAlign::TOP_LEFT, "$BATH_ICON"); }
 
       if (id(nappy).state == "$DRY") { it.printf(it.get_width(), 0, id(icon_font), TextAlign::TOP_RIGHT, "$DRY_ICON"); }
       if (id(nappy).state == "$WET") { it.printf(it.get_width(), 0, id(icon_font), TextAlign::TOP_RIGHT, "$WET_ICON"); }
