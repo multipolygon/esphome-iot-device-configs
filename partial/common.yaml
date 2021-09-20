@@ -3,8 +3,8 @@ logger:
   level: $LOG_LEVEL
 
 # https://esphome.io/components/status_led.html
-status_led:
-  <<: !include wemos_d1_mini_status_led.yaml
+# status_led:
+#   <<: !include wemos_d1_mini_status_led.yaml
 
 # https://esphome.io/components/wifi.html
 wifi:

@@ -2,32 +2,38 @@ import fs from "fs";
 import yaml from "yaml";
 import _ from "lodash";
 
+const structure = {
+  state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH"],
+  nappy: ["CLEAN", "PEE", "POO"],
+};
+
 const stateSwitches = []
   .concat(
-    ...Object.entries({
-      state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH"],
-      nappy: ["DRY", "WET", "DIRTY"],
-    }).map(([mode, states]) =>
-      states.map((state) =>
+    ...Object.entries(structure).map(([mode, states]) =>
+      states.map((state, i) =>
         yaml.createNode({
           platform: "template",
           id: `${state.toLowerCase()}_${mode}_mode_switch`,
-          name:
-            mode === "state"
-              ? `Baby ${_.startCase(state.toLowerCase())}`
-              : `${_.startCase(state.toLowerCase())} Nappy`,
+          name: `Baby ${_.startCase(state.toLowerCase())}`,
           icon: `mdi:$${state}_MDI`,
-          restore_state: true,
-          lambda: `return id(${mode}).state == "$${state}";`,
+          restore_state: false,
+          retain: false,
+          lambda: `return id(${mode}) == ${i + 1};`,
           turn_on_action: {
-            "text_sensor.template.publish": { id: mode, state: `$${state}` },
+            lambda: [
+              `id(${mode}) = ${i + 1};`,
+              ...(state == "FEEDING"
+                ? [
+                    `id(previous_feed_time) = id(feed_time);`,
+                    `id(feed_time) = id(ntp).now().timestamp;`,
+                  ]
+                : []),
+            ].join("\n"),
           },
           turn_off_action: [
-            { "text_sensor.template.publish": { id: mode, state: `$BLANK` } },
+            { lambda: `id(${mode}) = 0;` },
             { delay: "500ms" },
-            {
-              "text_sensor.template.publish": { id: mode, state: `$${state}` },
-            },
+            { lambda: `id(${mode}) = ${i + 1};` },
           ],
         })
       )
@@ -37,6 +43,17 @@ const stateSwitches = []
     x.commentBefore = " Auto generated:";
     return x;
   });
+
+const textSensorLambdas = _.mapValues(structure, (states, mode) =>
+  `
+switch (id(${mode})) {
+${states.map((state, i) => `case ${i + 1}: return {"$${state}"};`).join("\n")}
+default: return {""};
+}
+`.trim()
+);
+
+console.log(textSensorLambdas);
 
 const config = yaml.parseDocument(fs.readFileSync("baby_logger.yaml", "utf8"));
 
@@ -50,5 +67,12 @@ if (config.get("switch") === null) {
     ...stateSwitches,
   ]);
 }
+
+Object.entries(textSensorLambdas).forEach(([mode, lambda]) =>
+  config
+    .get(`text_sensor`)
+    .items.find((x) => x.get("id") == `${mode}_text`)
+    .set("lambda", lambda)
+);
 
 fs.writeFileSync("baby_logger.yaml", config.toString(), "utf8");
