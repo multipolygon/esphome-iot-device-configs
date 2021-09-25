@@ -3,8 +3,19 @@ import yaml from "yaml";
 import _ from "lodash";
 
 const structure = {
-  state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH"],
+  state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH", "CAR"],
   nappy: ["CLEAN", "PEE", "POO"],
+};
+
+const specialActions = {
+  state: {
+    FEEDING: [
+      {
+        "component.update": "feed_interval",
+      },
+      { lambda: `id(feed_time) = id(ntp).now().timestamp;` },
+    ],
+  },
 };
 
 const stateSwitches = []
@@ -19,22 +30,16 @@ const stateSwitches = []
           restore_state: false,
           retain: false,
           lambda: `return id(${mode}) == ${i + 1};`,
-          turn_on_action: {
-            lambda: [
-              `id(${mode}) = ${i + 1};`,
-              ...(state == "FEEDING"
-                ? [
-                    `id(previous_feed_time) = id(feed_time);`,
-                    `id(feed_time) = id(ntp).now().timestamp;`,
-                  ]
-                : []),
-            ].join("\n"),
-          },
-          turn_off_action: [
-            { lambda: `id(${mode}) = 0;` },
-            { delay: "500ms" },
+          turn_on_action: [
             { lambda: `id(${mode}) = ${i + 1};` },
+            ...(specialActions?.[mode]?.[state] || []),
           ],
+          // turn_off_action: [
+          //   { lambda: `id(${mode}) = 0;` },
+          //   { delay: "500ms" },
+          //   { lambda: `id(${mode}) = ${i + 1};` },
+          //   ...(specialActions?.[mode]?.[state] || []),
+          // ],
         })
       )
     )

@@ -1,0 +1,134 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: backyard_garden_sprinklers
+  PREFIX: Backyard Garden Sprinklers
+  WIFI_AP_SSID: ESP-BGS
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: WARN
+  UPDATE_INTERVAL: 15min
+  ## PINS:
+  GARDEN_SOLENOID_PIN: D6
+  FERNERY_SOLENOID_PIN: D1
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+  esp8266_restore_from_flash: true
+
+# https://esphome.io/components/status_led.html
+status_led:
+  <<: !include partial/wemos_d1_mini_status_led.yaml
+
+<<: !include partial/common.yaml
+
+## https://esphome.io/guides/automations.html#global-variables
+globals:
+  - id: garden_enabled
+    type: bool
+    restore_value: yes
+
+  - id: fernery_enabled
+    type: bool
+    restore_value: yes
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+switch:
+  ## https://esphome.io/components/switch/template.html
+  - platform: template
+    name: Schedule Backyard Garden Sprinklers
+    icon: mdi:sprinkler-variant
+    lambda: return id(garden_enabled);
+    turn_on_action:
+      globals.set:
+        id: garden_enabled
+        value: "true"
+    turn_off_action:
+      globals.set:
+        id: garden_enabled
+        value: "false"
+
+  - id: garden_solenoid
+    name: Backyard Garden Sprinklers
+    icon: mdi:sprinkler-variant
+    platform: gpio
+    pin: $GARDEN_SOLENOID_PIN
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      script.execute: garden_timer
+
+  - platform: template
+    name: Schedule Fernery Sprinklers
+    icon: mdi:sprinkler-variant
+    lambda: return id(fernery_enabled);
+    turn_on_action:
+      globals.set:
+        id: fernery_enabled
+        value: "true"
+    turn_off_action:
+      globals.set:
+        id: fernery_enabled
+        value: "false"
+
+  - id: fernery_solenoid
+    name: Fernery Sprinklers
+    icon: mdi:sprinkler-variant
+    platform: gpio
+    pin: $FERNERY_SOLENOID_PIN
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      script.execute: fernery_timer
+
+## https://esphome.io/guides/automations.html#script
+script:
+  - id: garden_timer
+    mode: restart
+    then:
+      - delay: 10min
+      - switch.turn_off: garden_solenoid
+
+  - id: fernery_timer
+    mode: restart
+    then:
+      - delay: 5min
+      - switch.turn_off: fernery_solenoid
+
+## https://esphome.io/components/time.html
+time:
+  ## https://esphome.io/components/time.html#sntp-time-source
+  - id: ntp_time
+    platform: sntp
+    servers:
+      - $MQTT_BROKER
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 7
+        days_of_week: MON,WED,FRI,SUN
+        then:
+          - if:
+              condition:
+                lambda: return id(garden_enabled);
+              then:
+                switch.turn_on: garden_solenoid
+
+      - &fernery_time
+        seconds: 0
+        minutes: 0
+        hours: 8
+        then:
+          if:
+            condition:
+              lambda: return id(fernery_enabled);
+            then:
+              switch.turn_on: fernery_solenoid
+
+      - <<: *fernery_time
+        hours: 12
+
+      - <<: *fernery_time
+        hours: 16

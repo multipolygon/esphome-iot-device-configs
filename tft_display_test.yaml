@@ -1,0 +1,55 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: tft_display_test
+  PREFIX: Display
+  WIFI_AP_SSID: ESP-BL
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 5min
+
+esphome:
+  <<: !include partial/esphome.yaml
+  platform: ESP32
+  board: lolin_d32_pro
+
+logger:
+  level: $LOG_LEVEL
+
+font:
+  - id: small
+    file: "fonts/DejaVuSansMono.ttf"
+    size: 16
+
+spi:
+  clk_pin: 18
+  mosi_pin: 23
+
+## https://esphome.io/components/display/index.html
+display:
+  ## https://esphome.io/components/display/st7735.html
+  - platform: st7735
+    model: "INITR_GREENTAB"
+    dc_pin: 17
+    cs_pin: 16
+    rotation: 0
+    device_width: 128
+    device_height: 128
+    col_start: 0
+    row_start: 0
+    eight_bit_color: true
+    update_interval: 1s
+    lambda: |-
+      // BGR
+      auto white = Color(255, 255, 255);
+      auto red = Color(0, 0, 255);
+      auto green = Color(0, 255, 0);
+      auto blue = Color(255, 0, 0);
+      auto yellow = Color(0, 200, 255);
+      auto orange = Color(0, 64, 255);
+
+      it.printf(0, 0, id(small), white, TextAlign::TOP_LEFT, "white");
+      it.printf(0, 20, id(small), red, TextAlign::TOP_LEFT, "red");
+      it.printf(0, 40, id(small), green, TextAlign::TOP_LEFT, "green");
+      it.printf(0, 60, id(small), blue, TextAlign::TOP_LEFT, "blue");
+      it.printf(0, 80, id(small), yellow, TextAlign::TOP_LEFT, "yellow");
+      it.printf(0, 100, id(small), orange, TextAlign::TOP_LEFT, "orange");
