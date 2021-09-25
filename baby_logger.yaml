@@ -250,6 +250,14 @@ switch:
     lambda: return id(state) == 1;
     turn_on_action:
       - lambda: id(state) = 1;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 1;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 1;
   # Auto generated:
   - platform: template
     id: sleeping_state_mode_switch
@@ -260,6 +268,14 @@ switch:
     lambda: return id(state) == 2;
     turn_on_action:
       - lambda: id(state) = 2;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 2;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 2;
   # Auto generated:
   - platform: template
     id: feeding_state_mode_switch
@@ -272,6 +288,16 @@ switch:
       - lambda: id(state) = 3;
       - component.update: feed_interval
       - lambda: id(feed_time) = id(ntp).now().timestamp;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 3;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 3;
+          - component.update: feed_interval
+          - lambda: id(feed_time) = id(ntp).now().timestamp;
   # Auto generated:
   - platform: template
     id: walk_state_mode_switch
@@ -282,6 +308,14 @@ switch:
     lambda: return id(state) == 4;
     turn_on_action:
       - lambda: id(state) = 4;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 4;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 4;
   # Auto generated:
   - platform: template
     id: bath_state_mode_switch
@@ -292,6 +326,14 @@ switch:
     lambda: return id(state) == 5;
     turn_on_action:
       - lambda: id(state) = 5;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 5;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 5;
   # Auto generated:
   - platform: template
     id: car_state_mode_switch
@@ -302,6 +344,14 @@ switch:
     lambda: return id(state) == 6;
     turn_on_action:
       - lambda: id(state) = 6;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 6;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 6;
   # Auto generated:
   - platform: template
     id: clean_nappy_mode_switch
@@ -312,6 +362,14 @@ switch:
     lambda: return id(nappy) == 1;
     turn_on_action:
       - lambda: id(nappy) = 1;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(nappy) == 1;
+        then:
+          - lambda: id(nappy) = 0;
+          - delay: 500ms
+          - lambda: id(nappy) = 1;
   # Auto generated:
   - platform: template
     id: pee_nappy_mode_switch
@@ -322,6 +380,14 @@ switch:
     lambda: return id(nappy) == 2;
     turn_on_action:
       - lambda: id(nappy) = 2;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(nappy) == 2;
+        then:
+          - lambda: id(nappy) = 0;
+          - delay: 500ms
+          - lambda: id(nappy) = 2;
   # Auto generated:
   - platform: template
     id: poo_nappy_mode_switch
@@ -332,6 +398,14 @@ switch:
     lambda: return id(nappy) == 3;
     turn_on_action:
       - lambda: id(nappy) = 3;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(nappy) == 3;
+        then:
+          - lambda: id(nappy) = 0;
+          - delay: 500ms
+          - lambda: id(nappy) = 3;
 
 binary_sensor:
   - platform: template

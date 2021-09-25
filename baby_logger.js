@@ -34,12 +34,17 @@ const stateSwitches = []
             { lambda: `id(${mode}) = ${i + 1};` },
             ...(specialActions?.[mode]?.[state] || []),
           ],
-          // turn_off_action: [
-          //   { lambda: `id(${mode}) = 0;` },
-          //   { delay: "500ms" },
-          //   { lambda: `id(${mode}) = ${i + 1};` },
-          //   ...(specialActions?.[mode]?.[state] || []),
-          // ],
+          turn_off_action: {
+            if: {
+              condition: { lambda: `return id(${mode}) == ${i + 1};` },
+              then: [
+                { lambda: `id(${mode}) = 0;` },
+                { delay: "500ms" },
+                { lambda: `id(${mode}) = ${i + 1};` },
+                ...(specialActions?.[mode]?.[state] || []),
+              ],
+            },
+          },
         })
       )
     )
