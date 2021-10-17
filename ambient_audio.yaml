@@ -1,0 +1,56 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: ambient_audio_1
+  PREFIX: Ambient Audio 1
+  WIFI_AP_SSID: ESP-AA1
+  REBOOT_TIMEOUT: 120min
+  LOG_LEVEL: VERBOSE
+  UPDATE_INTERVAL: 15min
+  ## PINS:
+  UART_TX: D6
+  UART_RX: D5
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+# https://esphome.io/components/status_led.html
+status_led:
+  <<: !include partial/wemos_d1_mini_status_led.yaml
+
+<<: !include partial/common.yaml
+
+uart:
+  tx_pin: $UART_TX
+  rx_pin: $UART_RX
+  baud_rate: 9600
+
+## https://esphome.io/components/dfplayer.html
+dfplayer:
+
+## https://esphome.io/guides/automations.html#global-variables
+globals:
+  - id: playing
+    type: bool
+
+switch:
+  ## https://esphome.io/components/switch/template.html
+  - platform: template
+    id: play_switch
+    name: Ambient Audio 1 Play
+    icon: mdi:volume-high
+    lambda: return id(playing);
+    turn_on_action:
+      - dfplayer.set_volume: 10
+      - dfplayer.play:
+          file: 1
+          loop: true
+    turn_off_action:
+      - dfplayer.pause
+
+## https://esphome.io/components/time.html
+time:
+  ## https://esphome.io/components/time.html#sntp-time-source
+  - id: ntp_time
+    platform: sntp
+    servers:
+      - $MQTT_BROKER

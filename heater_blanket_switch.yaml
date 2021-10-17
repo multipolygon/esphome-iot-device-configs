@@ -4,15 +4,14 @@ substitutions:
   PREFIX: Heater Blanket Switch
   WIFI_AP_SSID: ESP-HBS
   REBOOT_TIMEOUT: 120min
-  LOG_LEVEL: INFO
+  LOG_LEVEL: WARN
   UPDATE_INTERVAL: 15min
 
 esphome:
   <<: !include partial/esphome_sonoff_s26.yaml
   comment: Sonoff S26 No. 2
 
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -53,15 +52,27 @@ binary_sensor:
 switch:
   - id: relay_switch
     name: $PREFIX
+    icon: mdi:bed
     platform: gpio
     pin: GPIO12
     restore_mode: ALWAYS_OFF
     on_turn_on:
       light.turn_off: led_light
     on_turn_off:
-      light.turn_on:
-        id: led_light
-        brightness: 30%
+      - light.turn_on:
+          id: led_light
+          brightness: 30%
+      - script.stop: timer_script_30min
+
+  - platform: template
+    name: $PREFIX 30min
+    icon: mdi:progress-clock
+    lambda: return id(timer_script_30min).is_running();
+    turn_on_action:
+      script.execute: timer_script_30min
+    turn_off_action:
+      ## Restart the timer:
+      script.execute: timer_script_30min
 
 output:
   - platform: esp8266_pwm
@@ -76,3 +87,11 @@ light:
     platform: monochromatic
     output: led_output
     restore_mode: ALWAYS_ON
+
+script:
+  - id: timer_script_30min
+    mode: restart
+    then:
+      - switch.turn_on: relay_switch
+      - delay: 30min
+      - switch.turn_off: relay_switch

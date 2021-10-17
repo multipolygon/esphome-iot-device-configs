@@ -11,16 +11,16 @@ substitutions:
   TRANSITION: 500ms
 
 esphome:
-  <<: !include partial/esphome_lolin_d32_pro.yaml
+  <<: !include partial/esphome.yaml
+  platform: ESP32
+  board: lolin_d32_pro
 
 status_led:
   pin:
     number: GPIO5
     inverted: true
 
-<<: !include partial/lolin_d32_pro_status_led.yaml
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -84,6 +84,7 @@ switch:
     name: $PREFIX Audio
     platform: gpio
     pin: GPIO25
+    icon: mdi:volume-high
 
 output:
   - id: lamp_output
@@ -97,6 +98,7 @@ light:
     platform: monochromatic
     output: lamp_output
     default_transition_length: 0s
+    icon: mdi:lamp
 
 script:
   - id: audio_timer_script

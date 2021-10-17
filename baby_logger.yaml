@@ -46,7 +46,7 @@ substitutions:
 esphome:
   <<: !include partial/esphome.yaml
   platform: ESP32
-  board: wemos_d1_mini32
+  board: lolin_d32_pro
 
 <<: !include partial/common.yaml
 
@@ -58,6 +58,7 @@ time:
       - $MQTT_BROKER
     on_time_sync:
       then:
+        - component.update: feed_timer
         - component.update: age_weeks
         - component.update: age_months
 
@@ -407,7 +408,128 @@ switch:
           - delay: 500ms
           - lambda: id(nappy) = 3;
 
+font:
+  - id: time_font
+    file: "fonts/od-bold.ttf"
+    size: 164
+    glyphs: [".", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  - file: fonts/materialdesignicons-webfont.ttf
+    id: icon_font
+    size: 80
+    glyphs:
+      - "$AWAKE_ICON"
+      - "$SLEEPING_ICON"
+      - "$FEEDING_ICON"
+      - "$WALK_ICON"
+      - "$BATH_ICON"
+      - "$CAR_ICON"
+      - "$DRY_ICON"
+      - "$WET_ICON"
+      - "$DIRTY_ICON"
+color:
+  - id: color_green
+    red: 5%
+    green: 100%
+    blue: 5%
+
+  - id: color_blue
+    red: 5%
+    green: 5%
+    blue: 100%
+
+## https://esphome.io/components/spi.html
+spi:
+  mosi_pin: 23
+  miso_pin: 19
+  clk_pin: 18
+
+display:
+  ## https://www.wemos.cc/en/latest/d1_mini_shield/tft_2_4.html
+  ## https://esphome.io/components/display/ili9341.html
+  - platform: ili9341
+    model: TFT 2.4
+    led_pin: 32
+    reset_pin: 33
+    dc_pin: 27
+    cs_pin: 14
+    rotation: 270
+    update_interval: 100ms
+    lambda: |-
+      std::string icons[] = { "", "$AWAKE_ICON", "$SLEEPING_ICON", "$FEEDING_ICON", "$WALK_ICON", "$BATH_ICON", "$CAR_ICON" };
+
+      it.printf(it.get_width() / 2, -25, id(time_font), Color::WHITE, TextAlign::TOP_CENTER, "%.1f", id(feed_timer).state);
+
+      it.printf(0 , 0, id(icon_font), id(state) == 3 ? id(color_green) : id(color_blue), TextAlign::TOP_LEFT, "$FEEDING_ICON");
+
+      if (id(state) >= 4) {
+        it.printf(it.get_width() / 2, 0, id(icon_font), id(color_green), TextAlign::TOP_CENTER, icons[id(state)].c_str());
+      } else {
+        it.printf(it.get_width() / 2, 0, id(icon_font), id(state) == 1 ? id(color_green) : id(color_blue), TextAlign::TOP_CENTER, "$AWAKE_ICON");
+      }
+
+      it.printf(it.get_width(), 0, id(icon_font), id(state) == 2 ? id(color_green) : id(color_blue), TextAlign::TOP_RIGHT, "$SLEEPING_ICON");
+
+## https://www.wemos.cc/en/latest/d1_mini_shield/tft_2_4.html
+## https://esphome.io/components/binary_sensor/xpt2046.html
+xpt2046:
+  id: touchscreen
+  cs_pin: 12
+  # irq_pin: 16
+  update_interval: 50ms
+  report_interval: 1s
+  threshold: 400
+  dimension_x: 100
+  dimension_y: 100
+  calibration_x_min: 3860
+  calibration_x_max: 280
+  calibration_y_min: 340
+  calibration_y_max: 3860
+  swap_x_y: false
+
 binary_sensor:
+  - platform: xpt2046
+    id: ts_icon_1
+    x_min: 0
+    x_max: 100
+    y_min: 0
+    y_max: 33
+    on_press:
+      - logger.log:
+          level: INFO
+          format: ts_icon_1
+      - switch.turn_on: feeding_state_mode_switch
+    filters:
+      - delayed_off: 1s
+
+  - platform: xpt2046
+    id: ts_icon_2
+    x_min: 0
+    x_max: 100
+    y_min: 33
+    y_max: 66
+    on_press:
+      - logger.log:
+          level: INFO
+          format: ts_icon_2
+      - switch.turn_on: awake_state_mode_switch
+    filters:
+      - delayed_off: 1s
+
+  - platform: xpt2046
+    id: ts_icon_3
+    x_min: 0
+    x_max: 100
+    y_min: 66
+    y_max: 100
+    on_press:
+      - logger.log:
+          level: INFO
+          format: ts_icon_3
+      - switch.turn_on: sleeping_state_mode_switch
+    filters:
+      - delayed_off: 1s
+
   - platform: template
     id: feed_alert
     lambda: return id(state) == 3;
@@ -419,70 +541,3 @@ binary_sensor:
           topic: notify/warning/$NAME/feeding_time
           payload: Baby fed 3h ago!
           retain: no
-
-font:
-  - id: time_font
-    file: "fonts/DejaVuSansMono.ttf"
-    size: 48
-
-  - file: fonts/materialdesignicons-webfont.ttf
-    id: icon_font
-    size: 64
-    glyphs:
-      - "$AWAKE_ICON"
-      - "$SLEEPING_ICON"
-      - "$FEEDING_ICON"
-      - "$WALK_ICON"
-      - "$BATH_ICON"
-      - "$DRY_ICON"
-      - "$WET_ICON"
-      - "$DIRTY_ICON"
-
-spi:
-  clk_pin: 18
-  mosi_pin: 23
-
-## https://esphome.io/components/display/index.html
-display:
-  ## https://esphome.io/components/display/st7735.html
-  - platform: st7735
-    model: "INITR_GREENTAB"
-    dc_pin: 17
-    cs_pin: 16
-    rotation: 0
-    device_width: 128
-    device_height: 128
-    col_start: 0
-    row_start: 0
-    eight_bit_color: false
-    update_interval: 1s
-    lambda: |-
-      // BGR
-      auto white = Color(255, 255, 255);
-      auto red = Color(0, 0, 255);
-      auto green = Color(0, 255, 0);
-      auto blue = Color(255, 0, 0);
-      auto yellow = Color(0, 200, 255);
-      auto orange = Color(0, 64, 255);
-
-      it.rectangle(0, 0, it.get_width(), it.get_height(), id(feed_timer).state < 2.5 ? green : (
-        id(feed_timer).state < 3 ? yellow : (
-          id(feed_timer).state < 3.5 ? orange : red
-        )
-      ));
-
-      std::string icons[] = { "", "$AWAKE_ICON", "$SLEEPING_ICON","$FEEDING_ICON", "$WALK_ICON","$BATH_ICON" };
-
-      it.printf(it.get_width() / 2, 4, id(icon_font), white, TextAlign::TOP_CENTER, icons[id(state)].c_str());
-
-      if (id(feed_time) > 0.0) {
-        it.printf(
-          it.get_width() / 2,
-          it.get_height(),
-          id(time_font),
-          white,
-          TextAlign::BOTTOM_CENTER,
-          "%.1f",
-          id(feed_timer).state
-        );
-      }

@@ -8,15 +8,20 @@ substitutions:
   UPDATE_INTERVAL: 15min
   # PINS:
   RAINGAUGE_PIN: D3
-  FERNERY_TANK_PIN: D5
+  GATE_SENSOR_PIN: D5
   FERNERY_LIGHTS_PIN: D6
-  FERNERY_PUMP_PIN: D7
+  GATE_PIN: D7
   BACKYARD_LIGHTS_PIN: D8
   # CONFIG:
   RAINFALL_AVG_HOURS: "24"
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
+
+status_led:
+  <<: !include partial/wemos_d1_mini_status_led.yaml
+
+<<: !include partial/common.yaml
 
 globals:
   - id: rainfall_total
@@ -27,25 +32,12 @@ globals:
     type: float
     restore_value: yes
 
-  - id: pump_enable
-    type: bool
-    initial_value: "true"
-    restore_value: yes
-
-<<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
-
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
 
   - id: daytime_text_sensor
     platform: mqtt_subscribe
     topic: info/time/daytime
-
-  - id: rain_forecast_text_sensor
-    platform: mqtt_subscribe
-    topic: info/weather/forecast/today/rain
 
   - id: security_motion_outside
     platform: mqtt_subscribe
@@ -70,27 +62,22 @@ binary_sensor:
       - lambda: id(rainfall_total) += 0.2794;
       - lambda: id(rainfall_hourly) += 0.2794;
 
-  - id: water_tank_sensor
-    name: $PREFIX Water Tank
+  ## Water gate:
+  - id: gate_sensor
+    name: $PREFIX Gate Open
+    device_class: door
     platform: gpio
     pin:
-      number: $FERNERY_TANK_PIN
+      number: $GATE_SENSOR_PIN
       mode: INPUT_PULLUP
-    device_class: moisture
     filters:
-      - delayed_on_off: 5s
-    on_press:
-      then:
-        mqtt.publish:
-          topic: notify/maintenance/$NAME/water_tank
-          payload: ""
-          retain: yes
-    on_release:
-      then:
-        mqtt.publish:
-          topic: notify/maintenance/$NAME/water_tank
-          payload: $PREFIX - Fernery water tank low!
-          retain: yes
+      - delayed_off: 30s
+    # on_press:
+    #   then:
+    #     mqtt.publish:
+    #       topic: notify/maintenance/$NAME/gate_open
+    #       payload: "Gate open"
+    #       retain: no
 
   - id: daytime_sensor
     platform: template
@@ -103,19 +90,6 @@ binary_sensor:
       then:
         - light.turn_on: garden_lights
         - light.turn_on: fernery_lights
-
-  - platform: template
-    id: pump_active_binary_sensor
-    name: $PREFIX Pump Active
-    lambda: |-
-      return (true
-        && id(pump_enable)
-        && id(water_tank_sensor).state
-        && id(daytime_text_sensor).state == "YES"
-        // && id(rain_forecast_text_sensor).state != "YES"
-        && id(rainfall_hourly) <= 0.5
-        && (id(rainfall_hourly_avg).state * $RAINFALL_AVG_HOURS) <= 2.0
-      );
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -150,32 +124,12 @@ sensor:
         window_size: $RAINFALL_AVG_HOURS
         send_every: 1
 
-  - id: hour_sensor
-    platform: mqtt_subscribe
-    topic: info/time/hour
-    on_value_range:
-      below: 0 # midnight
-      then:
-        - light.turn_off: garden_lights
-        - light.turn_off: fernery_lights
-
 switch:
-  - id: pump_enable_switch
-    name: $PREFIX Pump Enable
-    platform: template
-    lambda: return id(pump_enable);
-    turn_on_action:
-      lambda: id(pump_enable) = true;
-    turn_off_action:
-      lambda: id(pump_enable) = false;
-
   # TIP41C
-  - id: pump_switch
-    name: $PREFIX Pump
+  - id: gate_switch
+    name: $PREFIX Gate
     platform: gpio
-    pin: $FERNERY_PUMP_PIN
-    on_turn_on:
-      script.execute: pump_timer
+    pin: $GATE_PIN
 
   - id: notify_rainfall_day_total
     name: $PREFIX Notify Rainfall
@@ -219,6 +173,13 @@ time:
     on_time:
       - seconds: 0
         minutes: 0
+        hours: 0
+        then:
+          - light.turn_off: garden_lights
+          - light.turn_off: fernery_lights
+
+      - seconds: 0
+        minutes: 0
         hours: 10
         then:
           - if:
@@ -235,22 +196,7 @@ time:
           - component.update: rainfall_hourly_avg
           - lambda: id(rainfall_hourly) = 0;
 
-      - seconds: 0
-        minutes: 30
-        hours: /3
-        then:
-          if:
-            condition:
-              binary_sensor.is_on: pump_active_binary_sensor
-            then:
-              - switch.turn_on: pump_switch
-
 script:
-  - id: pump_timer
-    then:
-      - delay: 60s
-      - switch.turn_off: pump_switch
-
   - id: light_timer
     mode: restart
     then:

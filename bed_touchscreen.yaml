@@ -1,0 +1,310 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: bed_touchscreen
+  PREFIX: BTS
+  WIFI_AP_SSID: ESP-BTS
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
+  ## ICONS:
+  AWAKE_ICON: "󰚜"
+  FEEDING_ICON: "󰼹"
+  BED_ICON: "󰋣"
+  TIMER_ICON: "󰦖"
+  LIGHTBULB_ICON: "󰌵"
+
+esphome:
+  <<: !include partial/esphome.yaml
+  platform: ESP32
+  board: lolin_d32_pro
+  includes:
+    - weather_icon_map.h
+
+<<: !include partial/common.yaml
+
+## https://esphome.io/components/time.html#sntp-time-source
+time:
+  - id: ntp
+    platform: sntp
+    servers:
+      - $MQTT_BROKER
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  ## https://esphome.io/components/sensor/mqtt_subscribe.html
+  - platform: mqtt_subscribe
+    id: feed_timer
+    topic: device/baby_logger/sensor/baby_feed_timer/state
+
+  - platform: mqtt_subscribe
+    id: weather_low
+    topic: info/weather/forecast/today/temperature/low
+
+  - platform: mqtt_subscribe
+    id: weather_high
+    topic: info/weather/forecast/today/temperature/high
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  ## https://esphome.io/components/text_sensor/mqtt_subscribe.html
+  - id: weather_condition
+    platform: mqtt_subscribe
+    topic: info/weather/forecast/today/condition
+
+  - platform: mqtt_subscribe
+    id: baby_feeding
+    topic: device/baby_logger/switch/baby_feeding/state
+
+  - platform: mqtt_subscribe
+    id: heater_blanket
+    topic: device/heater_blanket_switch/switch/heater_blanket_switch/state
+
+  - platform: mqtt_subscribe
+    id: heater_blanket_30min
+    topic: device/heater_blanket_switch/switch/heater_blanket_switch_30min/state
+
+## https://esphome.io/components/switch/template.html
+switch:
+  ## https://esphome.io/components/switch/gpio.html
+  - platform: gpio
+    name: "Bed TS Light Switch"
+    id: light_switch
+    pin:
+      number: 5
+      inverted: true
+
+font:
+  - id: big_time_font
+    ## https://www.keshikan.net/fonts-e.html
+    file: "fonts/DSEG7Classic-Bold.ttf"
+    size: 92
+
+  - id: time_font
+    ## https://www.keshikan.net/fonts-e.html
+    file: "fonts/DSEG7Classic-Bold.ttf"
+    size: 42
+
+  - id: timer_font
+    file: "fonts/DSEG7Classic-Bold.ttf"
+    size: 28
+
+  - id: date_font
+    file: "fonts/pixelmix.ttf"
+    size: 32
+
+  - file: fonts/materialdesignicons-webfont.ttf
+    id: icon_font
+    size: 80
+    glyphs:
+      - "$AWAKE_ICON"
+      - "$FEEDING_ICON"
+      - "$BED_ICON"
+      - "$TIMER_ICON"
+      - "$LIGHTBULB_ICON"
+
+  - file: fonts/materialdesignicons-webfont.ttf
+    id: weather_icon_font
+    size: 54
+    glyphs:
+      - "\U000F0590" # weather-cloudy
+      - "\U000F0F2F" # weather-cloudy-alert
+      - "\U000F0E6E" # weather-cloudy-arrow-right
+      - "\U000F0591" # weather-fog
+      - "\U000F0592" # weather-hail
+      - "\U000F0F30" # weather-hazy
+      - "\U000F0898" # weather-hurricane
+      - "\U000F0593" # weather-lightning
+      - "\U000F067E" # weather-lightning-rainy
+      - "\U000F0594" # weather-night
+      - "\U000F0F31" # weather-night-partly-cloudy
+      - "\U000F0595" # weather-partly-cloudy
+      - "\U000F0F32" # weather-partly-lightning
+      - "\U000F0F33" # weather-partly-rainy
+      - "\U000F0F34" # weather-partly-snowy
+      - "\U000F0F35" # weather-partly-snowy-rainy
+      - "\U000F0596" # weather-pouring
+      - "\U000F0597" # weather-rainy
+      - "\U000F0598" # weather-snowy
+      - "\U000F0F36" # weather-snowy-heavy
+      - "\U000F067F" # weather-snowy-rainy
+      - "\U000F0599" # weather-sunny
+      - "\U000F0F37" # weather-sunny-alert
+      - "\U000F14E4" # weather-sunny-off
+      - "\U000F059A" # weather-sunset
+      - "\U000F059B" # weather-sunset-down
+      - "\U000F059C" # weather-sunset-up
+      - "\U000F0F38" # weather-tornado
+      - "\U000F059D" # weather-windy
+      - "\U000F059E" # weather-windy-variant
+
+color:
+  - id: color_red
+    red: 100%
+    green: 0%
+    blue: 0%
+
+  - id: color_red_dark
+    red: 20%
+    green: 0%
+    blue: 0%
+
+  - id: color_green
+    red: 0%
+    green: 100%
+    blue: 0%
+
+  - id: color_green_dark
+    red: 0%
+    green: 15%
+    blue: 0%
+
+  - id: color_green_medium
+    red: 0%
+    green: 90%
+    blue: 0%
+
+  - id: color_blue
+    red: 5%
+    green: 5%
+    blue: 100%
+
+## https://esphome.io/components/spi.html
+spi:
+  mosi_pin: 23
+  miso_pin: 19
+  clk_pin: 18
+
+## https://esphome.io/components/display/index.html
+display:
+  ## https://www.wemos.cc/en/latest/d1_mini_shield/tft_2_4.html
+  ## https://esphome.io/components/display/ili9341.html
+  - platform: ili9341
+    model: TFT 2.4
+    led_pin: 32
+    reset_pin: 33
+    dc_pin: 27
+    cs_pin: 14
+    rotation: 270
+    update_interval: 10ms
+    lambda: |-
+      auto w = it.get_width();
+      auto h = it.get_height();
+
+      if (id(show_time).state) {
+        it.strftime(0, 0, id(date_font), id(color_green_medium), TextAlign::TOP_LEFT, "%a", id(ntp).now());
+        it.strftime(w, 0, id(date_font), id(color_green_medium), TextAlign::TOP_RIGHT, "%d %b", id(ntp).now());
+
+        it.print(w / 2, h / 2, id(big_time_font), id(color_green_dark), TextAlign::CENTER, "00:00");
+        it.strftime(w / 2, h / 2, id(big_time_font), id(color_green), TextAlign::CENTER, "%H:%M", id(ntp).now());
+
+        it.print(0, h, id(weather_icon_font), id(color_green_medium), TextAlign::BOTTOM_LEFT, weather_icon_map[id(weather_condition).state.c_str()].c_str());
+        it.printf(w, h, id(date_font), id(color_green_medium), TextAlign::BOTTOM_RIGHT, "%.0f-%.0f°", id(weather_low).state, id(weather_high).state);
+
+      } else {
+        it.print(w * 1/6, h * 1/4 - 3 , id(time_font), id(color_red_dark), TextAlign::BOTTOM_CENTER, "00");
+        it.print(w * 1/6, h * 1/4 + 3, id(time_font), id(color_red_dark), TextAlign::TOP_CENTER, "00");
+
+        it.strftime(w * 1/6, h * 1/4 - 3 , id(time_font), id(show_time).state ? id(color_green) : id(color_red), TextAlign::BOTTOM_CENTER, "%H", id(ntp).now());
+        it.strftime(w * 1/6, h * 1/4 + 3, id(time_font), id(show_time).state ? id(color_green) : id(color_red), TextAlign::TOP_CENTER, "%M", id(ntp).now());
+
+        it.print(w * 3/6, h * 1/4, id(weather_icon_font), false ? id(color_green) : id(color_red), TextAlign::CENTER, weather_icon_map[id(weather_condition).state.c_str()].c_str());
+        it.print(w * 5/6, h * 1/4, id(icon_font), id(light_switch).state ? id(color_green) : id(color_red), TextAlign::CENTER, "$LIGHTBULB_ICON");
+
+        it.print(w * 1/6, h * 3/4 - 2, id(icon_font), id(baby_feeding).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$FEEDING_ICON");
+        it.printf(w * 1/6, h * 3/4 + 32, id(timer_font), id(baby_feeding).state == "ON" ? id(color_green) : id(color_red), TextAlign::TOP_CENTER, "%0.1f", id(feed_timer).state);
+
+        it.print(w * 3/6, h * 3/4, id(icon_font), id(heater_blanket).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$BED_ICON");
+        it.print(w * 5/6, h * 3/4, id(icon_font), id(heater_blanket_30min).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$TIMER_ICON");
+      }
+
+## https://www.wemos.cc/en/latest/d1_mini_shield/tft_2_4.html
+## https://esphome.io/components/binary_sensor/xpt2046.html
+xpt2046:
+  id: touchscreen
+  cs_pin: 12
+  # irq_pin: 16
+  update_interval: 10ms
+  report_interval: never
+  threshold: 400
+  dimension_x: 100
+  dimension_y: 100
+  calibration_x_min: 3860
+  calibration_x_max: 280
+  calibration_y_min: 340
+  calibration_y_max: 3860
+  swap_x_y: false
+
+binary_sensor:
+  - platform: xpt2046
+    id: show_time
+    x_min: 0
+    x_max: 50
+    y_min: 0
+    y_max: 33
+    filters:
+      - delayed_off: 30s
+
+  - platform: xpt2046
+    id: ts_icon_2
+    x_min: 0
+    x_max: 50
+    y_min: 33
+    y_max: 66
+    filters:
+      - delayed_off: 500ms
+
+  - platform: xpt2046
+    id: ts_icon_3
+    x_min: 0
+    x_max: 50
+    y_min: 66
+    y_max: 100
+    on_press:
+      switch.toggle: light_switch
+    filters:
+      - delayed_off: 500ms
+
+  - platform: xpt2046
+    id: ts_icon_4
+    x_min: 50
+    x_max: 100
+    y_min: 0
+    y_max: 33
+    on_press:
+      mqtt.publish:
+        topic: device/baby_logger/switch/baby_feeding/command
+        payload: !lambda |-
+          return id(baby_feeding).state == "ON" ? "OFF" : "ON";
+    filters:
+      - delayed_off: 500ms
+
+  - platform: xpt2046
+    id: ts_icon_5
+    x_min: 50
+    x_max: 100
+    y_min: 33
+    y_max: 66
+    on_press:
+      mqtt.publish:
+        topic: device/heater_blanket_switch/switch/heater_blanket_switch/command
+        payload: !lambda |-
+          return id(heater_blanket).state == "ON" ? "OFF" : "ON";
+    filters:
+      - delayed_off: 500ms
+
+  - platform: xpt2046
+    id: ts_icon_6
+    x_min: 50
+    x_max: 100
+    y_min: 66
+    y_max: 100
+    on_press:
+      mqtt.publish:
+        topic: device/heater_blanket_switch/switch/heater_blanket_switch_30min/command
+        payload: !lambda |-
+          return id(heater_blanket_30min).state == "ON" ? "OFF" : "ON";
+    filters:
+      - delayed_off: 500ms
