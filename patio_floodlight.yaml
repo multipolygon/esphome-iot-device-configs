@@ -15,9 +15,7 @@ substitutions:
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
 
-<<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -25,6 +23,10 @@ text_sensor:
   - id: security_enabled
     platform: mqtt_subscribe
     topic: security/enabled
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: info/time/daytime
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -39,9 +41,18 @@ binary_sensor:
       mode: INPUT_PULLUP
     device_class: motion
 
+  - id: nighttime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state == "NO";
+    filters:
+      delayed_on: 1h
+    on_press:
+      then:
+        switch.turn_on: sensor_enabled
+
   - id: motion_light
     platform: template
-    lambda: return id(pir_gpio).state && id(sensor_enabled).state;
+    lambda: return id(pir_gpio).state && id(sensor_enabled).state && id(daytime_text_sensor).state == "NO";
     device_class: motion
     filters:
       delayed_off: 5min

@@ -7,11 +7,11 @@ substitutions:
   LOG_LEVEL: INFO
   UPDATE_INTERVAL: 15min
   ## ICONS:
-  AWAKE_ICON: "󰚜"
-  FEEDING_ICON: "󰼹"
+  AUDIO_ICON: "󰕾"
+  SLEEPING_ICON: "󰒲"
+  LIGHTBULB_ICON: "󰌵"
   BED_ICON: "󰋣"
   TIMER_ICON: "󰦖"
-  LIGHTBULB_ICON: "󰌵"
 
 esphome:
   <<: !include partial/esphome.yaml
@@ -19,6 +19,10 @@ esphome:
   board: lolin_d32_pro
   includes:
     - weather_icon_map.h
+  on_boot:
+    output.set_level:
+      id: back_light
+      level: 100%
 
 <<: !include partial/common.yaml
 
@@ -28,6 +32,17 @@ time:
     platform: sntp
     servers:
       - $MQTT_BROKER
+    on_time:
+      - hours: 6
+        then:
+          output.set_level:
+            id: back_light
+            level: 100%
+      - hours: 23
+        then:
+          output.set_level:
+            id: back_light
+            level: 50%
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -46,6 +61,11 @@ sensor:
     id: weather_high
     topic: info/weather/forecast/today/temperature/high
 
+  - platform: mqtt_subscribe
+    id: temperature
+    ## TODO:
+    topic: device/studio_env_sensor/sensor/studio_temperature/state
+
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
 
@@ -55,8 +75,12 @@ text_sensor:
     topic: info/weather/forecast/today/condition
 
   - platform: mqtt_subscribe
-    id: baby_feeding
-    topic: device/baby_logger/switch/baby_feeding/state
+    id: baby
+    topic: device/baby_logger/sensor/baby_state/state
+
+  - platform: mqtt_subscribe
+    id: audio
+    topic: device/bed/switch/bed_audio/state
 
   - platform: mqtt_subscribe
     id: heater_blanket
@@ -80,34 +104,34 @@ font:
   - id: big_time_font
     ## https://www.keshikan.net/fonts-e.html
     file: "fonts/DSEG7Classic-Bold.ttf"
-    size: 92
+    size: 96
 
   - id: time_font
     ## https://www.keshikan.net/fonts-e.html
     file: "fonts/DSEG7Classic-Bold.ttf"
-    size: 42
+    size: 60
 
   - id: timer_font
     file: "fonts/DSEG7Classic-Bold.ttf"
-    size: 28
+    size: 48
 
   - id: date_font
     file: "fonts/pixelmix.ttf"
-    size: 32
+    size: 42
 
   - file: fonts/materialdesignicons-webfont.ttf
     id: icon_font
-    size: 80
+    size: 70
     glyphs:
-      - "$AWAKE_ICON"
-      - "$FEEDING_ICON"
+      - "$AUDIO_ICON"
+      - "$SLEEPING_ICON"
+      - "$LIGHTBULB_ICON"
       - "$BED_ICON"
       - "$TIMER_ICON"
-      - "$LIGHTBULB_ICON"
 
   - file: fonts/materialdesignicons-webfont.ttf
     id: weather_icon_font
-    size: 54
+    size: 64
     glyphs:
       - "\U000F0590" # weather-cloudy
       - "\U000F0F2F" # weather-cloudy-alert
@@ -139,36 +163,37 @@ font:
       - "\U000F0F38" # weather-tornado
       - "\U000F059D" # weather-windy
       - "\U000F059E" # weather-windy-variant
+      - "\U000F0026" # alert
 
 color:
-  - id: color_red
+  - id: red
     red: 100%
     green: 0%
     blue: 0%
 
-  - id: color_red_dark
+  - id: red_dark
     red: 20%
     green: 0%
     blue: 0%
 
-  - id: color_green
+  - id: green
     red: 0%
     green: 100%
     blue: 0%
 
-  - id: color_green_dark
+  - id: green_dark
     red: 0%
     green: 15%
     blue: 0%
 
-  - id: color_green_medium
+  - id: green_medium
     red: 0%
     green: 90%
     blue: 0%
 
-  - id: color_blue
-    red: 5%
-    green: 5%
+  - id: blue
+    red: 0%
+    green: 0%
     blue: 100%
 
 ## https://esphome.io/components/spi.html
@@ -176,6 +201,11 @@ spi:
   mosi_pin: 23
   miso_pin: 19
   clk_pin: 18
+
+output:
+  - platform: ledc
+    id: back_light
+    pin: 32
 
 ## https://esphome.io/components/display/index.html
 display:
@@ -194,30 +224,34 @@ display:
       auto h = it.get_height();
 
       if (id(show_time).state) {
-        it.strftime(0, 0, id(date_font), id(color_green_medium), TextAlign::TOP_LEFT, "%a", id(ntp).now());
-        it.strftime(w, 0, id(date_font), id(color_green_medium), TextAlign::TOP_RIGHT, "%d %b", id(ntp).now());
+        it.strftime(0, 0, id(date_font), id(red), TextAlign::TOP_LEFT, "%a", id(ntp).now());
+        it.strftime(w, 0, id(date_font), id(red), TextAlign::TOP_RIGHT, "%b %d", id(ntp).now());
 
-        it.print(w / 2, h / 2, id(big_time_font), id(color_green_dark), TextAlign::CENTER, "00:00");
-        it.strftime(w / 2, h / 2, id(big_time_font), id(color_green), TextAlign::CENTER, "%H:%M", id(ntp).now());
+        it.print(w / 2, h / 2, id(big_time_font), id(red_dark), TextAlign::CENTER, "88:88");
+        it.strftime(w / 2, h / 2, id(big_time_font), id(red), TextAlign::CENTER, "%H:%M", id(ntp).now());
 
-        it.print(0, h, id(weather_icon_font), id(color_green_medium), TextAlign::BOTTOM_LEFT, weather_icon_map[id(weather_condition).state.c_str()].c_str());
-        it.printf(w, h, id(date_font), id(color_green_medium), TextAlign::BOTTOM_RIGHT, "%.0f-%.0f°", id(weather_low).state, id(weather_high).state);
+        it.print(0, h, id(weather_icon_font), id(red), TextAlign::BOTTOM_LEFT, weather_icon_map[id(weather_condition).state.c_str()].c_str());
+        it.printf(w, h, id(date_font), id(red), TextAlign::BOTTOM_RIGHT, "%.0f-%.0f°", id(weather_low).state, id(weather_high).state);
 
       } else {
-        it.print(w * 1/6, h * 1/4 - 3 , id(time_font), id(color_red_dark), TextAlign::BOTTOM_CENTER, "00");
-        it.print(w * 1/6, h * 1/4 + 3, id(time_font), id(color_red_dark), TextAlign::TOP_CENTER, "00");
+        it.print(1, 5, id(time_font), id(red_dark), TextAlign::TOP_LEFT, "88:88");
+        it.strftime(1, 5, id(time_font), id(show_time).state ? id(green) : id(red), TextAlign::TOP_LEFT, "%H:%M", id(ntp).now());
 
-        it.strftime(w * 1/6, h * 1/4 - 3 , id(time_font), id(show_time).state ? id(color_green) : id(color_red), TextAlign::BOTTOM_CENTER, "%H", id(ntp).now());
-        it.strftime(w * 1/6, h * 1/4 + 3, id(time_font), id(show_time).state ? id(color_green) : id(color_red), TextAlign::TOP_CENTER, "%M", id(ntp).now());
+        it.print(w - 1, 5, id(timer_font), id(red_dark), TextAlign::TOP_RIGHT, "88");
+        if (id(temperature).has_state()) {
+          it.printf(w - 1, 5, id(timer_font), id(red), TextAlign::TOP_RIGHT, "%2.0f", id(temperature).state);
+        }
 
-        it.print(w * 3/6, h * 1/4, id(weather_icon_font), false ? id(color_green) : id(color_red), TextAlign::CENTER, weather_icon_map[id(weather_condition).state.c_str()].c_str());
-        it.print(w * 5/6, h * 1/4, id(icon_font), id(light_switch).state ? id(color_green) : id(color_red), TextAlign::CENTER, "$LIGHTBULB_ICON");
+        it.print(w * 1/6, h * 3/6, id(icon_font), id(audio).state == "ON" ? id(green) : (id(audio_button).state ? id(blue) : id(red)), TextAlign::CENTER, "$AUDIO_ICON");
+        it.print(w * 3/6, h * 3/6, id(icon_font), id(baby).state == "sleeping" ? id(green) : (id(sleeping_button).state ? id(blue) : id(red)), TextAlign::CENTER, "$SLEEPING_ICON");
+        it.print(w * 5/6, h * 3/6, id(timer_font), id(baby).state == "feeding" ? id(green) : (id(feeding_button).state ? id(blue) : id(red_dark)), TextAlign::CENTER, "8.8");
+        if (id(feed_timer).has_state()) {
+          it.printf(w * 5/6, h * 3/6, id(timer_font), id(baby).state == "feeding" ? id(green) : (id(feeding_button).state ? id(blue) : id(red)), TextAlign::CENTER, "%0.1f", id(feed_timer).state);
+        } 
 
-        it.print(w * 1/6, h * 3/4 - 2, id(icon_font), id(baby_feeding).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$FEEDING_ICON");
-        it.printf(w * 1/6, h * 3/4 + 32, id(timer_font), id(baby_feeding).state == "ON" ? id(color_green) : id(color_red), TextAlign::TOP_CENTER, "%0.1f", id(feed_timer).state);
-
-        it.print(w * 3/6, h * 3/4, id(icon_font), id(heater_blanket).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$BED_ICON");
-        it.print(w * 5/6, h * 3/4, id(icon_font), id(heater_blanket_30min).state == "ON" ? id(color_green) : id(color_red), TextAlign::CENTER, "$TIMER_ICON");
+        it.print(w * 1/6, h * 5/6, id(icon_font), id(light_switch).state ? id(green) : (id(light_button).state ? id(blue) : id(red)), TextAlign::CENTER, "$LIGHTBULB_ICON");
+        it.print(w * 3/6, h * 5/6, id(icon_font), id(heater_blanket).state == "ON" ? id(green) : (id(blanket_button).state ? id(blue) : id(red)), TextAlign::CENTER, "$BED_ICON");
+        it.print(w * 5/6, h * 5/6, id(icon_font), id(heater_blanket_30min).state == "ON" ? id(green) : (id(blanket_timer_button).state ? id(blue) : id(red)), TextAlign::CENTER, "$TIMER_ICON");
       }
 
 ## https://www.wemos.cc/en/latest/d1_mini_shield/tft_2_4.html
@@ -241,49 +275,72 @@ binary_sensor:
   - platform: xpt2046
     id: show_time
     x_min: 0
-    x_max: 50
+    x_max: 33
     y_min: 0
-    y_max: 33
-    filters:
-      - delayed_off: 30s
-
-  - platform: xpt2046
-    id: ts_icon_2
-    x_min: 0
-    x_max: 50
-    y_min: 33
-    y_max: 66
-    filters:
-      - delayed_off: 500ms
-
-  - platform: xpt2046
-    id: ts_icon_3
-    x_min: 0
-    x_max: 50
-    y_min: 66
     y_max: 100
-    on_press:
-      switch.toggle: light_switch
     filters:
-      - delayed_off: 500ms
+      - delayed_off: 10s
+
+  ## 2nd row:
 
   - platform: xpt2046
-    id: ts_icon_4
-    x_min: 50
-    x_max: 100
+    id: audio_button
+    x_min: 33
+    x_max: 65
     y_min: 0
     y_max: 33
     on_press:
       mqtt.publish:
-        topic: device/baby_logger/switch/baby_feeding/command
+        topic: device/bed/switch/bed_audio/command
         payload: !lambda |-
-          return id(baby_feeding).state == "ON" ? "OFF" : "ON";
+          return id(audio).state == "ON" ? "OFF" : "ON";
     filters:
-      - delayed_off: 500ms
+      - delayed_off: 250ms
 
   - platform: xpt2046
-    id: ts_icon_5
-    x_min: 50
+    id: sleeping_button
+    x_min: 33
+    x_max: 65
+    y_min: 33
+    y_max: 66
+    on_press:
+      mqtt.publish:
+        topic: device/baby_logger/switch/baby_sleeping/command
+        payload: !lambda |-
+          return id(baby).state == "sleeping" ? "OFF" : "ON";
+    filters:
+      - delayed_off: 250ms
+
+  - platform: xpt2046
+    id: feeding_button
+    x_min: 33
+    x_max: 65
+    y_min: 66
+    y_max: 100
+    on_press:
+      mqtt.publish:
+        topic: device/baby_logger/switch/baby_feeding/command
+        payload: !lambda |-
+          return id(baby).state == "feeding" ? "OFF" : "ON";
+    filters:
+      - delayed_off: 250ms
+
+  ## 3rd row:
+
+  - platform: xpt2046
+    id: light_button
+    x_min: 66
+    x_max: 100
+    y_min: 0
+    y_max: 33
+    on_press:
+      switch.toggle: light_switch
+    filters:
+      - delayed_off: 250ms
+
+  - platform: xpt2046
+    id: blanket_button
+    x_min: 66
     x_max: 100
     y_min: 33
     y_max: 66
@@ -293,11 +350,11 @@ binary_sensor:
         payload: !lambda |-
           return id(heater_blanket).state == "ON" ? "OFF" : "ON";
     filters:
-      - delayed_off: 500ms
+      - delayed_off: 250ms
 
   - platform: xpt2046
-    id: ts_icon_6
-    x_min: 50
+    id: blanket_timer_button
+    x_min: 66
     x_max: 100
     y_min: 66
     y_max: 100
@@ -307,4 +364,4 @@ binary_sensor:
         payload: !lambda |-
           return id(heater_blanket_30min).state == "ON" ? "OFF" : "ON";
     filters:
-      - delayed_off: 500ms
+      - delayed_off: 250ms

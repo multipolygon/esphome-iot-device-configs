@@ -9,9 +9,16 @@ substitutions:
 
 esphome:
   <<: !include partial/esphome_sonoff_s26.yaml
+  esp8266_restore_from_flash: true
   comment: Sonoff S26 No. 2
 
 <<: !include partial/common.yaml
+
+## https://esphome.io/guides/automations.html#global-variables
+globals:
+  - id: auto_nighttime
+    type: bool
+    restore_value: yes
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -32,10 +39,18 @@ binary_sensor:
       delayed_on_off: 2h
     on_press:
       then:
-        switch.turn_off: relay_switch
+        if:
+          condition:
+            lambda: return id(auto_nighttime);
+          then:
+            switch.turn_off: relay_switch
     on_release:
       then:
-        switch.turn_on: relay_switch
+        if:
+          condition:
+            lambda: return id(auto_nighttime);
+          then:
+            switch.turn_on: relay_switch
 
   - id: button_binary_sensor
     platform: gpio
@@ -56,13 +71,8 @@ switch:
     platform: gpio
     pin: GPIO12
     restore_mode: ALWAYS_OFF
-    on_turn_on:
-      light.turn_off: led_light
     on_turn_off:
-      - light.turn_on:
-          id: led_light
-          brightness: 30%
-      - script.stop: timer_script_30min
+      script.stop: timer_script_30min
 
   - platform: template
     name: $PREFIX 30min
@@ -74,19 +84,32 @@ switch:
       ## Restart the timer:
       script.execute: timer_script_30min
 
+  ## https://esphome.io/components/switch/template.html
+  - platform: template
+    name: $PREFIX Auto Nighttime
+    icon: mdi:theme-light-dark
+    lambda: return id(auto_nighttime);
+    turn_on_action:
+      - lambda: id(auto_nighttime) = true;
+      - light.turn_on:
+          id: green_led
+          brightness: 50%
+    turn_off_action:
+      - lambda: id(auto_nighttime) = false;
+      - light.turn_off: green_led
+
 output:
   - platform: esp8266_pwm
-    id: led_output
+    id: green_led_output
     pin:
       number: GPIO13
       inverted: true
 
 light:
   # https://esphome.io/components/light/monochromatic.html
-  - id: led_light
+  - id: green_led
     platform: monochromatic
-    output: led_output
-    restore_mode: ALWAYS_ON
+    output: green_led_output
 
 script:
   - id: timer_script_30min
