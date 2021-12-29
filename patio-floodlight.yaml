@@ -1,6 +1,6 @@
 substitutions:
   <<: !include secrets_ag.yaml
-  NAME: patio_floodlight
+  NAME: patio-floodlight
   PREFIX: Patio Floodlight
   SHORT_PREFIX: Patio
   WIFI_AP_SSID: ESP-PFL
@@ -27,6 +27,12 @@ text_sensor:
   - id: daytime_text_sensor
     platform: mqtt_subscribe
     topic: info/time/daytime
+
+  - id: power_request
+    platform: mqtt_subscribe
+    topic: request/garden/power
+    on_value:
+      light.turn_off: flood
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml

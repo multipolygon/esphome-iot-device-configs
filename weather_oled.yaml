@@ -11,8 +11,7 @@ esphome:
   includes:
     - weather_icon_map.h
 
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
 text_sensor:
   - id: weather_condition

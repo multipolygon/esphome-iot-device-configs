@@ -7,8 +7,8 @@ substitutions:
   LOG_LEVEL: WARN
   UPDATE_INTERVAL: 15min
   ## PINS:
-  GARDEN_SOLENOID_PIN: D6
-  FERNERY_SOLENOID_PIN: D1
+  GARDEN_SOLENOID_PIN: D1
+  FERNERY_SOLENOID_PIN: D6
 
 esphome:
   <<: !include partial/esphome_d1_mini.yaml
@@ -32,6 +32,25 @@ globals:
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: info/time/daytime
+
+  - id: rain_forecast_text_sensor
+    platform: mqtt_subscribe
+    topic: info/weather/forecast/today/rain
+
+  - id: power_request
+    platform: mqtt_subscribe
+    topic: request/garden/power
+    on_value:
+      if:
+        condition:
+          lambda: return x.c_str() != "$NAME";
+        then:
+          - switch.turn_off: garden_solenoid
+          - switch.turn_off: fernery_solenoid
 
 sensor:
   - <<: !include partial/wifi_rssi_sensor.yaml
@@ -114,7 +133,9 @@ time:
               condition:
                 lambda: return id(garden_enabled);
               then:
-                switch.turn_on: garden_solenoid
+                - <<: !include partial/request_garden_power.yaml
+                - delay: 3s
+                - switch.turn_on: garden_solenoid
 
       - &fernery_time
         seconds: 0
@@ -125,10 +146,15 @@ time:
             condition:
               lambda: return id(fernery_enabled);
             then:
-              switch.turn_on: fernery_solenoid
+              - <<: !include partial/request_garden_power.yaml
+              - delay: 3s
+              - switch.turn_on: fernery_solenoid
+
+      - <<: *fernery_time
+        hours: 10
 
       - <<: *fernery_time
         hours: 12
 
       - <<: *fernery_time
-        hours: 16
+        hours: 14

@@ -1,0 +1,149 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: courtyard-garden
+  PREFIX: Courtyard Garden
+  WIFI_AP_SSID: ESP-C1
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+## https://esphome.io/guides/automations.html#global-variables
+globals:
+  - id: schedule_sprinkler
+    type: bool
+    restore_value: yes
+
+# https://esphome.io/components/status_led.html
+status_led:
+  <<: !include partial/wemos_d1_mini_status_led.yaml
+
+<<: !include partial/common.yaml
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: info/time/daytime
+
+  - id: power_request
+    platform: mqtt_subscribe
+    topic: request/garden/power
+    on_value:
+      if:
+        condition:
+          lambda: return x.c_str() != "$NAME";
+        then:
+          - light.turn_off: relay_light
+          - switch.turn_off: sprinkler_solenoid
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+  - id: hour_sensor
+    platform: mqtt_subscribe
+    topic: info/time/hour
+    on_value_range:
+      below: 0 # midnight
+      then:
+        light.turn_off: relay_light
+
+binary_sensor:
+  - id: daytime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state == "YES";
+    on_press:
+      then:
+        light.turn_off: relay_light
+    on_release:
+      then:
+        light.turn_on: relay_light
+
+  - id: button_binary_sensor
+    platform: gpio
+    pin:
+      number: D3
+      mode: INPUT
+      inverted: true
+    filters:
+      delayed_on: 100ms
+    on_press:
+      then:
+        light.toggle: relay_light
+
+output:
+  - id: relay_output
+    platform: gpio
+    pin: D1
+
+light:
+  - id: relay_light
+    name: $PREFIX Lights
+    platform: binary
+    output: relay_output
+    restore_mode: ALWAYS_OFF
+
+switch:
+  ## https://esphome.io/components/switch/template.html
+  - platform: template
+    name: Schedule Courtyard Sprinklers
+    icon: mdi:sprinkler-variant
+    lambda: return id(schedule_sprinkler);
+    turn_on_action:
+      globals.set:
+        id: schedule_sprinkler
+        value: "true"
+    turn_off_action:
+      globals.set:
+        id: schedule_sprinkler
+        value: "false"
+
+  - id: sprinkler_solenoid
+    name: Courtyard Sprinklers
+    icon: mdi:sprinkler-variant
+    platform: gpio
+    pin: D6
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - light.turn_off: relay_light
+      - script.execute: sprinkler_timer
+
+## https://esphome.io/guides/automations.html#script
+script:
+  - id: sprinkler_timer
+    mode: restart
+    then:
+      - delay: 5min
+      - switch.turn_off: sprinkler_solenoid
+
+## https://esphome.io/components/time.html
+time:
+  ## https://esphome.io/components/time.html#sntp-time-source
+  - id: ntp_time
+    platform: sntp
+    servers:
+      - $MQTT_BROKER
+    on_time:
+      - &schedule_time
+        seconds: 0
+        minutes: 0
+        hours: 9
+        then:
+          if:
+            condition:
+              lambda: return id(schedule_sprinkler);
+            then:
+              - <<: !include partial/request_garden_power.yaml
+              - light.turn_off: relay_light
+              - delay: 3s
+              - switch.turn_on: sprinkler_solenoid
+
+      - <<: *schedule_time
+        hours: 15
+
+      - <<: *schedule_time
+        hours: 17

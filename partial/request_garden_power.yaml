@@ -1,0 +1,4 @@
+mqtt.publish:
+  topic: request/garden/power
+  payload: $NAME
+  retain: no

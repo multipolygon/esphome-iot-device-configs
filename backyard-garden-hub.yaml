@@ -1,9 +1,9 @@
 substitutions:
   <<: !include secrets_ag.yaml
-  NAME: backyard_garden_hub
+  NAME: backyard-garden-hub
   PREFIX: Backyard Garden Hub
   WIFI_AP_SSID: ESP-BGBH
-  REBOOT_TIMEOUT: 120min
+  REBOOT_TIMEOUT: 10min
   LOG_LEVEL: WARN
   UPDATE_INTERVAL: 15min
   # PINS:
@@ -64,7 +64,7 @@ binary_sensor:
 
   ## Water gate:
   - id: gate_sensor
-    name: $PREFIX Gate Open
+    name: Backyard Gate Open
     device_class: door
     platform: gpio
     pin:
@@ -125,11 +125,21 @@ sensor:
         send_every: 1
 
 switch:
-  # TIP41C
+  # https://esphome.io/components/switch/gpio.html
   - id: gate_switch
-    name: $PREFIX Gate
+    name: Backyard Gate
+    icon: mdi:key
     platform: gpio
     pin: $GATE_PIN
+    on_turn_on:
+      - <<: !include partial/request_garden_power.yaml
+      - mqtt.publish:
+          topic: notify/warning/$NAME/gate
+          payload: Garden gate opened!
+          retain: no
+      - script.execute: gate_open
+    on_turn_off:
+      - script.stop: gate_open
 
   - id: notify_rainfall_day_total
     name: $PREFIX Notify Rainfall
@@ -205,3 +215,13 @@ script:
       - delay: 10min
       - light.turn_off: garden_lights
       - light.turn_off: fernery_lights
+
+  - id: gate_open
+    mode: restart
+    then:
+      - delay: 5min
+      - mqtt.publish:
+          topic: notify/critical/$NAME/gate
+          payload: Garden gate still open!
+          retain: no
+      - script.execute: gate_open

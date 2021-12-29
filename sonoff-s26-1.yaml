@@ -1,0 +1,90 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: sonoff-s26-1
+  PREFIX: Sonoff S26 1
+  WIFI_AP_SSID: ESP-S26-1
+  REBOOT_TIMEOUT: 15min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 5min
+
+esphome:
+  <<: !include partial/esphome_sonoff_s26.yaml
+  comment: Sonoff S26 1
+
+<<: !include partial/common.yaml
+
+switch:
+  - name: $PREFIX Switch
+    id: relay_switch
+    platform: gpio
+    pin: GPIO12
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      light.turn_off: led_light
+    on_turn_off:
+      light.turn_on:
+        id: led_light
+        brightness: 50%
+
+text_sensor:
+  - <<: !include partial/wifi_ip_addr_text_sensor.yaml
+  - <<: !include partial/mqtt_scenes_for_living_room.yaml
+
+  - id: daytime_text_sensor
+    platform: mqtt_subscribe
+    topic: info/time/daytime
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+binary_sensor:
+  - id: daytime_sensor
+    platform: template
+    lambda: return id(daytime_text_sensor).state == "YES";
+    on_release:
+      then:
+        switch.turn_on: relay_switch
+
+  - id: button_binary_sensor
+    platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    filters:
+      delayed_on: 100ms
+    on_press:
+      then:
+        switch.toggle: relay_switch
+
+output:
+  - platform: esp8266_pwm
+    id: led_output
+    pin:
+      number: GPIO13
+      inverted: true
+
+light:
+  # https://esphome.io/components/light/monochromatic.html
+  - id: led_light
+    platform: monochromatic
+    output: led_output
+    restore_mode: ALWAYS_ON
+
+script:
+  - id: scene_living_room_bright_light
+    then:
+      switch.turn_on: relay_switch
+
+  - id: scene_living_room_low_light
+    then:
+      switch.turn_on: relay_switch
+
+  - id: scene_living_room_night_light
+    then:
+      switch.turn_off: relay_switch
+
+  - id: scene_living_room_all_lights_off
+    then:
+      switch.turn_off: relay_switch
