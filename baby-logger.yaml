@@ -16,6 +16,7 @@ substitutions:
   WALK: walk
   BATH: bath
   CAR: car
+  TUMMY_TIME: tummy
 
   ## NAPPY:
   CLEAN: clean
@@ -35,6 +36,8 @@ substitutions:
   BATH_ICON: "󰦠" # "\U000F09A0"
   CAR_MDI: car
   CAR_ICON: "󰄋"
+  TUMMY_TIME_MDI: baby
+  TUMMY_TIME_ICON: "󰁬"
 
   CLEAN_MDI: water-off
   CLEAN_ICON: "󰖍" # "\U000F058D"
@@ -222,6 +225,7 @@ text_sensor:
       case 4: return {"$WALK"};
       case 5: return {"$BATH"};
       case 6: return {"$CAR"};
+      case 7: return {"$TUMMY_TIME"};
       default: return {""};
       }
 
@@ -287,8 +291,6 @@ switch:
     lambda: return id(state) == 3;
     turn_on_action:
       - lambda: id(state) = 3;
-      - component.update: feed_interval
-      - lambda: id(feed_time) = id(ntp).now().timestamp;
     turn_off_action:
       if:
         condition:
@@ -297,8 +299,6 @@ switch:
           - lambda: id(state) = 0;
           - delay: 500ms
           - lambda: id(state) = 3;
-          - component.update: feed_interval
-          - lambda: id(feed_time) = id(ntp).now().timestamp;
   # Auto generated:
   - platform: template
     id: walk_state_mode_switch
@@ -353,6 +353,24 @@ switch:
           - lambda: id(state) = 0;
           - delay: 500ms
           - lambda: id(state) = 6;
+  # Auto generated:
+  - platform: template
+    id: tummy_time_state_mode_switch
+    name: Baby Tummy Time
+    icon: mdi:$TUMMY_TIME_MDI
+    restore_state: false
+    retain: false
+    lambda: return id(state) == 7;
+    turn_on_action:
+      - lambda: id(state) = 7;
+    turn_off_action:
+      if:
+        condition:
+          lambda: return id(state) == 7;
+        then:
+          - lambda: id(state) = 0;
+          - delay: 500ms
+          - lambda: id(state) = 7;
   # Auto generated:
   - platform: template
     id: clean_nappy_mode_switch
@@ -424,6 +442,7 @@ font:
       - "$WALK_ICON"
       - "$BATH_ICON"
       - "$CAR_ICON"
+      - "$TUMMY_TIME_ICON"
       - "$DRY_ICON"
       - "$WET_ICON"
       - "$DIRTY_ICON"
@@ -491,7 +510,7 @@ binary_sensor:
   - platform: xpt2046
     id: ts_icon_1
     x_min: 0
-    x_max: 100
+    x_max: 33
     y_min: 0
     y_max: 33
     on_press:
@@ -505,7 +524,7 @@ binary_sensor:
   - platform: xpt2046
     id: ts_icon_2
     x_min: 0
-    x_max: 100
+    x_max: 33
     y_min: 33
     y_max: 66
     on_press:
@@ -519,7 +538,7 @@ binary_sensor:
   - platform: xpt2046
     id: ts_icon_3
     x_min: 0
-    x_max: 100
+    x_max: 33
     y_min: 66
     y_max: 100
     on_press:
@@ -531,13 +550,21 @@ binary_sensor:
       - delayed_off: 1s
 
   - platform: template
+    id: feed_timer_reset
+    lambda: return id(state) == 3;
+    filters:
+      delayed_on: 1min
+    on_press:
+      - component.update: feed_interval
+      - lambda: id(feed_time) = id(ntp).now().timestamp;
+
+  - platform: template
     id: feed_alert
     lambda: return id(state) == 3;
     filters:
-      delayed_off: 3h
+      delayed_off: 4h
     on_release:
-      then:
-        mqtt.publish:
+      - mqtt.publish:
           topic: notify/warning/$NAME/feeding_time
-          payload: Baby fed 3h ago!
+          payload: Baby fed 4h ago!
           retain: no

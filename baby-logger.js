@@ -2,21 +2,14 @@ import fs from "fs";
 import yaml from "yaml";
 import _ from "lodash";
 
+const TARGET_FILE = "baby-logger.yaml";
+
 const structure = {
-  state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH", "CAR"],
+  state: ["AWAKE", "SLEEPING", "FEEDING", "WALK", "BATH", "CAR", "TUMMY_TIME"],
   nappy: ["CLEAN", "PEE", "POO"],
 };
 
-const specialActions = {
-  state: {
-    FEEDING: [
-      {
-        "component.update": "feed_interval",
-      },
-      { lambda: `id(feed_time) = id(ntp).now().timestamp;` },
-    ],
-  },
-};
+const specialActions = {};
 
 const stateSwitches = []
   .concat(
@@ -65,7 +58,7 @@ default: return {""};
 
 console.log(textSensorLambdas);
 
-const config = yaml.parseDocument(fs.readFileSync("baby_logger.yaml", "utf8"));
+const config = yaml.parseDocument(fs.readFileSync(TARGET_FILE, "utf8"));
 
 if (config.get("switch") === null) {
   config.set("switch", stateSwitches);
@@ -85,4 +78,4 @@ Object.entries(textSensorLambdas).forEach(([mode, lambda]) =>
     .set("lambda", lambda)
 );
 
-fs.writeFileSync("baby_logger.yaml", config.toString(), "utf8");
+fs.writeFileSync(TARGET_FILE, config.toString(), "utf8");
