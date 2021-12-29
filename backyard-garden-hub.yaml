@@ -52,6 +52,13 @@ text_sensor:
           then:
             script.execute: light_timer
 
+  - id: power_request
+    platform: mqtt_subscribe
+    topic: request/garden/power
+    on_value:
+      - light.turn_off: garden_lights
+      - light.turn_off: fernery_lights
+
 binary_sensor:
   - id: raingauge_binary
     platform: gpio
@@ -132,6 +139,8 @@ switch:
     platform: gpio
     pin: $GATE_PIN
     on_turn_on:
+      - light.turn_off: garden_lights
+      - light.turn_off: fernery_lights
       - <<: !include partial/request_garden_power.yaml
       - mqtt.publish:
           topic: notify/warning/$NAME/gate
