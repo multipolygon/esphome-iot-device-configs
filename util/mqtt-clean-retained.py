@@ -6,7 +6,6 @@ with open('secrets_ag.yaml') as f:
     secrets = yaml.load(f, Loader=yaml.FullLoader)
 
 topic = 'notify/#'
-# topic = "device/baby_logger/switch/#"
 
 client = mqtt.Client("mqtt-clean-homeassistant")
 

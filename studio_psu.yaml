@@ -52,7 +52,7 @@ binary_sensor:
         - mqtt.publish:
             topic: notify/critical/$NAME/temperature
             payload: $PREFIX - Temperature Critical
-            retain: yes
+            retain: no
     on_release:
       - switch.turn_on: power_switch
 

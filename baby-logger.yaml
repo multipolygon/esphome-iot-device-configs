@@ -553,18 +553,19 @@ binary_sensor:
     id: feed_timer_reset
     lambda: return id(state) == 3;
     filters:
-      delayed_on: 1min
+      delayed_on_off: 5s
     on_press:
-      - component.update: feed_interval
       - lambda: id(feed_time) = id(ntp).now().timestamp;
+      - component.update: feed_timer
+      - component.update: feed_interval
 
-  - platform: template
-    id: feed_alert
-    lambda: return id(state) == 3;
-    filters:
-      delayed_off: 4h
-    on_release:
-      - mqtt.publish:
-          topic: notify/warning/$NAME/feeding_time
-          payload: Baby fed 4h ago!
-          retain: no
+  # - platform: template
+  #   id: feed_alert
+  #   lambda: return id(state) == 3;
+  #   filters:
+  #     delayed_off: 4h
+  #   on_release:
+  #     - mqtt.publish:
+  #         topic: notify/warning/$NAME/feeding_time
+  #         payload: Baby fed 4h ago!
+  #         retain: no

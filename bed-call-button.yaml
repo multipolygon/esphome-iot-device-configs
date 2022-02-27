@@ -1,0 +1,44 @@
+substitutions:
+  <<: !include secrets_ag.yaml
+  NAME: bed-call-button
+  PREFIX: Bed Call Button
+  WIFI_AP_SSID: ESP-BCB
+  REBOOT_TIMEOUT: 10min
+  LOG_LEVEL: INFO
+  UPDATE_INTERVAL: 15min
+  ## PINS:
+  BUTTON_PIN: D3
+  LED_PIN: D4
+
+esphome:
+  <<: !include partial/esphome_d1_mini.yaml
+
+<<: !include partial/common.yaml
+
+sensor:
+  - <<: !include partial/wifi_rssi_sensor.yaml
+  - <<: !include partial/uptime_sensor.yaml
+
+output:
+  - platform: gpio
+    pin:
+      number: $LED_PIN
+      inverted: true
+    id: led
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: $BUTTON_PIN
+      inverted: true
+    name: $PREFIX Action
+    filters:
+      delayed_off: 10s
+    on_press:
+      - output.turn_on: led
+      - mqtt.publish:
+          topic: notify/call/$NAME
+          payload: Bed call!
+          retain: no
+    on_release:
+      - output.turn_off: led

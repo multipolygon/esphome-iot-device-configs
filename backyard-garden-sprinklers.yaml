@@ -150,11 +150,11 @@ time:
               - delay: 3s
               - switch.turn_on: fernery_solenoid
 
-      - <<: *fernery_time
-        hours: 10
+      # - <<: *fernery_time
+      #   hours: 10
 
       - <<: *fernery_time
         hours: 12
 
-      - <<: *fernery_time
-        hours: 14
+      # - <<: *fernery_time
+      #   hours: 14

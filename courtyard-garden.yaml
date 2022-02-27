@@ -131,7 +131,7 @@ time:
       - &schedule_time
         seconds: 0
         minutes: 0
-        hours: 9
+        hours: 11
         then:
           if:
             condition:
@@ -142,8 +142,11 @@ time:
               - delay: 3s
               - switch.turn_on: sprinkler_solenoid
 
-      - <<: *schedule_time
-        hours: 15
+      # - <<: *schedule_time
+      #   hours: 13
 
-      - <<: *schedule_time
-        hours: 17
+      # - <<: *schedule_time
+      #   hours: 15
+
+      # - <<: *schedule_time
+      #   hours: 17

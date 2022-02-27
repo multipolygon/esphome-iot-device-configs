@@ -33,11 +33,21 @@ time:
     servers:
       - $MQTT_BROKER
     on_time:
-      - hours: 7
+      - hours: 8
         then:
           output.set_level:
             id: back_light
             level: 100%
+      - hours: 21
+        then:
+          output.set_level:
+            id: back_light
+            level: 20%
+      - hours: 22
+        then:
+          output.set_level:
+            id: back_light
+            level: 10%
       - hours: 23
         then:
           output.set_level:
@@ -224,14 +234,14 @@ display:
       auto h = it.get_height();
 
       if (id(show_time).state) {
-        it.strftime(0, 0, id(date_font), id(red), TextAlign::TOP_LEFT, "%a", id(ntp).now());
-        it.strftime(w, 0, id(date_font), id(red), TextAlign::TOP_RIGHT, "%b %d", id(ntp).now());
+        it.strftime(0, 0, id(date_font), id(green), TextAlign::TOP_LEFT, "%a", id(ntp).now());
+        it.strftime(w, 0, id(date_font), id(green), TextAlign::TOP_RIGHT, "%b %d", id(ntp).now());
 
-        it.print(w / 2, h / 2, id(big_time_font), id(red_dark), TextAlign::CENTER, "88:88");
-        it.strftime(w / 2, h / 2, id(big_time_font), id(red), TextAlign::CENTER, "%H:%M", id(ntp).now());
+        it.print(w / 2, h / 2, id(big_time_font), id(green_dark), TextAlign::CENTER, "88:88");
+        it.strftime(w / 2, h / 2, id(big_time_font), id(green), TextAlign::CENTER, "%H:%M", id(ntp).now());
 
-        it.print(0, h, id(weather_icon_font), id(red), TextAlign::BOTTOM_LEFT, weather_icon_map[id(weather_condition).state.c_str()].c_str());
-        it.printf(w, h, id(date_font), id(red), TextAlign::BOTTOM_RIGHT, "%.0f-%.0f°", id(weather_low).state, id(weather_high).state);
+        it.print(0, h, id(weather_icon_font), id(green), TextAlign::BOTTOM_LEFT, weather_icon_map[id(weather_condition).state.c_str()].c_str());
+        it.printf(w, h, id(date_font), id(green), TextAlign::BOTTOM_RIGHT, "%.0f-%.0f°", id(weather_low).state, id(weather_high).state);
 
       } else {
         it.print(1, 5, id(time_font), id(red_dark), TextAlign::TOP_LEFT, "88:88");

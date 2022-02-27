@@ -5,37 +5,23 @@
 
 std::map<std::string, std::string> weather_icon_map
   {
-    // ‘clear-night’
+    // official:
     {"clear-night", "\U000F0594"},
-    // ‘cloudy’
     {"cloudy", "\U000F0590"},
-    // ‘fog’
     {"fog", "\U000F0591"},
-    // ‘hail’
     {"hail", "\U000F0592"},
-    // ‘lightning’
     {"lightning", "\U000F0593"},
-    // ‘lightning-rainy’
     {"lightning-rainy", "\U000F067E"},
-    // ‘partlycloudy’
     {"partlycloudy", "\U000F0595"},
-    // ‘pouring’
     {"pouring", "\U000F0596"},
-    // ‘rainy’
     {"rainy", "\U000F0597"},
-    // ‘snowy’
     {"snowy", "\U000F0598"},
-    // ‘snowy-rainy’
     {"snowy-rainy", "\U000F067F"},
-    // ‘sunny’
     {"sunny", "\U000F0599"},
-    // ‘windy’
     {"windy", "\U000F059D"},
-    // ‘windy-variant’
     {"windy-variant", "\U000F059E"},
-    // ‘exceptional’
-    {"‘exceptional’", "\U000F0026"},
-    // other...
+    {"exceptional", "\U000F0026"},
+    // other:
     {"cloudy-alert", "\U000F0F2F"},
     {"cloudy-arrow-right", "\U000F0E6E"},
     {"hazy", "\U000F0F30"},

@@ -22,9 +22,7 @@ esphome:
 
 i2c:
 
-<<: !include partial/wemos_d1_mini_status_led.yaml
-<<: !include partial/wifi.yaml
-<<: !include partial/mqtt.yaml
+<<: !include partial/common.yaml
 
 text_sensor:
   - <<: !include partial/wifi_ip_addr_text_sensor.yaml
@@ -52,7 +50,44 @@ sensor:
           window_size: 6
           send_every: 6
 
+  - platform: mqtt_subscribe
+    name: $PREFIX AC Outside Temp
+    id: outside_temp
+    topic: info/weather/current/temperature
+
 binary_sensor:
+  - name: $PREFIX AC Outside Cooler
+    platform: template
+    lambda: |-
+      return
+        id(outside_temp).has_state() 
+        && id(daikin_inverter).mode == esphome::climate::ClimateMode::CLIMATE_MODE_COOL
+        && id(outside_temp).state < id(daikin_inverter).target_temperature;
+    filters:
+      delayed_on_off: 15min
+    on_press:
+      then:
+        mqtt.publish:
+          topic: notify/warning/$NAME/ac/outside_cooler
+          payload: "Outside is cooler but the air-conditioner is on!"
+          retain: no
+
+  - name: $PREFIX AC Outside Warmer
+    platform: template
+    lambda: |-
+      return
+        id(outside_temp).has_state() 
+        && id(daikin_inverter).mode == esphome::climate::ClimateMode::CLIMATE_MODE_HEAT
+        && id(outside_temp).state > id(daikin_inverter).target_temperature;
+    filters:
+      delayed_on_off: 15min
+    on_press:
+      then:
+        mqtt.publish:
+          topic: notify/warning/$NAME/ac/outwide_warmer
+          payload: "Outside is warmer but the heater is on!"
+          retain: no
+
   - name: $PREFIX Motion
     device_class: motion
     platform: gpio
@@ -143,23 +178,57 @@ remote_receiver:
 
 climate:
   ## https://www.esphome.io/components/climate/ir_climate.html?highlight=daikin
+  ## https://github.com/esphome/esphome/blob/dev/esphome/components/daikin/daikin.h
   - &daikin
     platform: daikin
     name: $PREFIX Inverter
+    id: daikin_inverter
     receiver_id: ir_receiver
     sensor: temperature_sensor
     supports_cool: true
     supports_heat: true
 
-  - <<: *daikin
-    name: $PREFIX Heater
-    supports_cool: false
-
-  - <<: *daikin
-    name: $PREFIX Air Conditioner
-    supports_heat: false
-
 switch:
+  # https://www.esphome.io/components/climate/index.html#climate-control-action
+  - platform: template
+    name: $PREFIX Air Conditioner
+    lambda: return id(daikin_inverter).mode == esphome::climate::ClimateMode::CLIMATE_MODE_COOL;
+    restore_state: no
+    turn_on_action:
+      climate.control:
+        id: daikin_inverter
+        mode: COOL
+        target_temperature: 25
+        fan_mode: LOW
+        swing_mode: "OFF"
+    turn_off_action:
+      climate.control:
+        id: daikin_inverter
+        mode: "OFF"
+
+  - platform: template
+    name: $PREFIX Heater
+    lambda: return id(daikin_inverter).mode == esphome::climate::ClimateMode::CLIMATE_MODE_HEAT;
+    restore_state: no
+    turn_on_action:
+      climate.control:
+        id: daikin_inverter
+        mode: HEAT
+        target_temperature: 21
+        fan_mode: LOW
+        swing_mode: "OFF"
+    turn_off_action:
+      climate.control:
+        id: daikin_inverter
+        mode: "OFF"
+
+  # - platform: template
+  #   name: $PREFIX Silent Fan
+  #   turn_on_action:
+  #     climate.control:
+  #       id: daikin_inverter
+  #       custom_fan_mode: DAIKIN_FAN_SILENT
+
   ############### Air Filter ###############
 
   - platform: template

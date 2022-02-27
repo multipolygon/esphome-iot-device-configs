@@ -51,12 +51,7 @@ binary_sensor:
       mqtt.publish:
         topic: notify/critical/$NAME/temperature
         payload: $PREFIX High Temperature!
-        retain: yes
-    on_release:
-      mqtt.publish:
-        topic: notify/critical/$NAME/temperature
-        payload: ""
-        retain: yes
+        retain: no
 
 output:
   - id: output_top_shelf
